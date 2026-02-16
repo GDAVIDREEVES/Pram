@@ -67,6 +67,26 @@ export interface Location {
   amenities: string[];
 }
 
+export type BroadcastAudience = 'friends' | 'nearby' | 'everyone';
+
+export interface MeetBroadcast {
+  id: string;
+  userId: string;
+  locationId: string;
+  locationName: string;
+  message: string;
+  audience: BroadcastAudience;
+  timestamp: string;
+  responses: BroadcastResponse[];
+}
+
+export interface BroadcastResponse {
+  id: string;
+  userId: string;
+  message: string;
+  timestamp: string;
+}
+
 export interface CheckIn {
   id: string;
   userId: string;

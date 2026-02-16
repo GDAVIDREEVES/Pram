@@ -1,6 +1,6 @@
 import React, { createContext, useContext, useState, useEffect, useMemo, ReactNode, useCallback } from 'react';
 import AsyncStorage from '@react-native-async-storage/async-storage';
-import { Mom, Match, Post, Message, CheckIn, Badge } from '@/lib/types';
+import { Mom, Match, Post, Message, CheckIn, Badge, MeetBroadcast, BroadcastAudience, BroadcastResponse } from '@/lib/types';
 import {
   currentUser,
   discoveryMoms,
@@ -27,6 +27,9 @@ interface AppContextValue {
   sendMessage: (matchId: string, content: string) => void;
   checkIns: CheckIn[];
   checkIn: (locationId: string) => void;
+  broadcasts: MeetBroadcast[];
+  createBroadcast: (locationId: string, locationName: string, message: string, audience: BroadcastAudience) => void;
+  respondToBroadcast: (broadcastId: string, message: string) => void;
   badges: Badge[];
   hangNow: boolean;
   toggleHangNow: () => void;
@@ -53,6 +56,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
   const [posts, setPosts] = useState<Post[]>(initialPosts);
   const [messagesMap, setMessagesMap] = useState<Record<string, Message[]>>({});
   const [checkIns, setCheckIns] = useState<CheckIn[]>([]);
+  const [broadcasts, setBroadcasts] = useState<MeetBroadcast[]>([]);
   const [userBadges, setBadges] = useState<Badge[]>(initialBadges);
   const [likedIds, setLikedIds] = useState<Set<string>>(new Set());
   const [skippedIds, setSkippedIds] = useState<Set<string>>(new Set());
@@ -215,6 +219,40 @@ export function AppProvider({ children }: { children: ReactNode }) {
     setCheckIns(prev => [...prev, newCheckIn]);
   }, []);
 
+  const createBroadcast = useCallback((locationId: string, locationName: string, message: string, audience: BroadcastAudience) => {
+    const newBroadcast: MeetBroadcast = {
+      id: `broadcast_${Date.now()}_${Crypto.randomUUID().slice(0, 8)}`,
+      userId: CURRENT_USER_ID,
+      locationId,
+      locationName,
+      message,
+      audience,
+      timestamp: new Date().toISOString(),
+      responses: [],
+    };
+    setBroadcasts(prev => [newBroadcast, ...prev]);
+
+    const newCheckIn: CheckIn = {
+      id: `checkin_${Date.now()}`,
+      userId: CURRENT_USER_ID,
+      locationId,
+      timestamp: new Date().toISOString(),
+    };
+    setCheckIns(prev => [...prev, newCheckIn]);
+  }, []);
+
+  const respondToBroadcast = useCallback((broadcastId: string, message: string) => {
+    const response: BroadcastResponse = {
+      id: `resp_${Date.now()}`,
+      userId: CURRENT_USER_ID,
+      message,
+      timestamp: new Date().toISOString(),
+    };
+    setBroadcasts(prev => prev.map(b =>
+      b.id === broadcastId ? { ...b, responses: [...b.responses, response] } : b
+    ));
+  }, []);
+
   const toggleHangNow = useCallback(() => {
     setHangNow(prev => !prev);
   }, []);
@@ -234,12 +272,15 @@ export function AppProvider({ children }: { children: ReactNode }) {
     sendMessage,
     checkIns,
     checkIn,
+    broadcasts,
+    createBroadcast,
+    respondToBroadcast,
     badges: userBadges,
     hangNow,
     toggleHangNow,
     getMomById,
     isLoading,
-  }), [user, updateUser, discoveryQueue, likeMom, skipMom, matches, posts, addPost, likePost, addComment, messagesMap, sendMessage, checkIns, checkIn, userBadges, hangNow, toggleHangNow, getMomById, isLoading]);
+  }), [user, updateUser, discoveryQueue, likeMom, skipMom, matches, posts, addPost, likePost, addComment, messagesMap, sendMessage, checkIns, checkIn, broadcasts, createBroadcast, respondToBroadcast, userBadges, hangNow, toggleHangNow, getMomById, isLoading]);
 
   return (
     <AppContext.Provider value={value}>

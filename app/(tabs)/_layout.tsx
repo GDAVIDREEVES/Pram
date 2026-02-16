@@ -4,7 +4,6 @@ import { NativeTabs, Icon, Label } from "expo-router/unstable-native-tabs";
 import { BlurView } from "expo-blur";
 import { Ionicons } from "@expo/vector-icons";
 import { Platform, StyleSheet, useColorScheme, View } from "react-native";
-import { useSafeAreaInsets } from "react-native-safe-area-context";
 import React from "react";
 import Colors from "@/constants/colors";
 
@@ -15,9 +14,9 @@ function NativeTabLayout() {
         <Icon sf={{ default: "heart.circle", selected: "heart.circle.fill" }} />
         <Label>Discover</Label>
       </NativeTabs.Trigger>
-      <NativeTabs.Trigger name="feed">
-        <Icon sf={{ default: "text.bubble", selected: "text.bubble.fill" }} />
-        <Label>Feed</Label>
+      <NativeTabs.Trigger name="meet">
+        <Icon sf={{ default: "antenna.radiowaves.left.and.right", selected: "antenna.radiowaves.left.and.right" }} />
+        <Label>Meet</Label>
       </NativeTabs.Trigger>
       <NativeTabs.Trigger name="map">
         <Icon sf={{ default: "map", selected: "map.fill" }} />
@@ -81,11 +80,11 @@ function ClassicTabLayout() {
         }}
       />
       <Tabs.Screen
-        name="feed"
+        name="meet"
         options={{
-          title: "Feed",
+          title: "Meet",
           tabBarIcon: ({ color, focused }) => (
-            <Ionicons name={focused ? "chatbubbles" : "chatbubbles-outline"} size={24} color={color} />
+            <Ionicons name={focused ? "radio" : "radio-outline"} size={24} color={color} />
           ),
         }}
       />
@@ -114,6 +113,12 @@ function ClassicTabLayout() {
           tabBarIcon: ({ color, focused }) => (
             <Ionicons name={focused ? "person-circle" : "person-circle-outline"} size={26} color={color} />
           ),
+        }}
+      />
+      <Tabs.Screen
+        name="feed"
+        options={{
+          href: null,
         }}
       />
     </Tabs>

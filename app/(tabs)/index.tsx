@@ -185,9 +185,17 @@ export default function DiscoverScreen() {
           <Text style={styles.title}>Discover</Text>
           <Text style={styles.subtitle}>Moms near you</Text>
         </View>
-        <Pressable style={styles.filterButton}>
-          <Ionicons name="options" size={22} color={Colors.text} />
-        </Pressable>
+        <View style={styles.topBarActions}>
+          <Pressable
+            onPress={() => router.push('/feed')}
+            style={styles.filterButton}
+          >
+            <Ionicons name="newspaper-outline" size={20} color={Colors.text} />
+          </Pressable>
+          <Pressable style={styles.filterButton}>
+            <Ionicons name="options" size={22} color={Colors.text} />
+          </Pressable>
+        </View>
       </View>
 
       <View style={styles.cardStack}>
@@ -257,6 +265,10 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     paddingHorizontal: 20,
     paddingVertical: 12,
+  },
+  topBarActions: {
+    flexDirection: 'row',
+    gap: 8,
   },
   title: {
     fontSize: 28,
