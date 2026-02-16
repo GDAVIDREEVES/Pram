@@ -1,0 +1,75 @@
+PROMPT FOR REPLIT BUILD
+
+Build a polished, production-quality mobile-first social networking application that feels like it was created by a large, sophisticated tech company (clean UI, smooth animations, modern design system, high-end branding, and strong attention to user safety and trust).
+
+APP CONCEPT  
+Create a hyper-local social networking app designed specifically for moms with young children in Brooklyn to safely meet other local moms at cafés, coffee shops, parks, and kid-friendly locations. The app should emphasize warmth, safety, trust, and a refined “local but premium” feel.
+
+CORE PROBLEM TO SOLVE  
+Moms often feel isolated and want a safe, curated way to meet other nearby moms in real life. The app should make discovering, matching, and meeting other moms simple, trustworthy, and comfortable.
+
+TARGET USERS  
+Primary: Moms with young children living in Brooklyn neighborhoods.  
+Secondary: Local businesses (cafes, coffee shops, kid-friendly venues) that may offer discounts or promotions inside the app.
+
+APP TYPE  
+Consumer social networking app with future business partnership capabilities.
+
+KEY FEATURES TO BUILD
+
+1. MATCHING SYSTEM (Inspired by Hinge)
+• Swipe-style discovery of nearby moms  
+• Profile prompts and interests  
+• Ability to “like,” “skip,” or send a message when matched  
+• Matching based on location, child age, interests, availability  
+
+2. SOCIAL NETWORK / FRIEND GRAPH (Inspired by Instagram)
+• Follow friends  
+• Activity feed showing check-ins, meetups, posts  
+• Profiles with photos, bio, kids’ ages, interests  
+• Ability to post updates and meetup plans  
+
+3. LOCATION + CHECK-IN SYSTEM (Inspired by Swarm/Foursquare)
+• Map showing nearby kid-friendly spots  
+• Check-in functionality at cafes, parks, and venues  
+• Search for locations nearby  
+• Stickers/badges for frequent visits  
+
+4. SOCIAL INTERACTION FEATURES (Inspired by Bump)
+• Ability to see who is currently nearby and available to meet  
+• “Hang now” status indicator  
+• Simple meetup coordination tools  
+
+5. SAFETY FEATURES (VERY IMPORTANT)
+• Verified user profiles  
+• Privacy controls  
+• Neighborhood-based visibility limits  
+• Reporting and moderation tools  
+
+DESIGN REQUIREMENTS
+• Clean, elegant, modern UI  
+• Warm but sophisticated color palette  
+• Mobile-first responsive layout  
+• Smooth transitions and polished animations  
+• Feels like a high-end consumer social app  
+
+TECHNICAL EXPECTATIONS
+• Use a scalable architecture  
+• Include authentication and user accounts  
+• Include database schema for users, matches, check-ins, and posts  
+• Build core functionality end-to-end (not just mockups)  
+
+OPTIONAL FUTURE EXTENSIONS (structure for later)
+• Business profiles for cafes  
+• Sponsored promotions  
+• Discount offers for meetups  
+
+OUTPUT
+Generate:
+• Full app structure  
+• UI components  
+• Backend logic  
+• Database models  
+• Clear instructions to run the app inside Replit  
+
+The result should feel like a real, launch-ready MVP for a premium local social networking app.
