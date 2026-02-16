@@ -15,9 +15,10 @@ A hyper-local social networking app for moms with young children in Brooklyn. Bu
 app/
   _layout.tsx          - Root layout with providers (fonts, context, query client)
   (tabs)/
-    _layout.tsx        - 5-tab layout (Discover, Feed, Explore, Chat, Profile)
-    index.tsx          - Discover screen (swipe cards)
-    feed.tsx           - Community feed with posts
+    _layout.tsx        - 5-tab layout (Discover, Meet, Explore, Chat, Profile)
+    index.tsx          - Discover screen (swipe cards + Feed access button)
+    meet.tsx           - Meet screen (check-in broadcasts with audience control)
+    feed.tsx           - Community feed with posts (hidden tab, accessible from Discover)
     map.tsx            - Location explorer with check-ins
     messages.tsx       - Messages/matches list
     profile.tsx        - User profile with badges & settings
@@ -31,7 +32,7 @@ components/
   ErrorBoundary.tsx    - Error boundary wrapper
   ErrorFallback.tsx    - Error UI fallback
 contexts/
-  AppContext.tsx        - Main app state (user, matches, posts, messages, check-ins)
+  AppContext.tsx        - Main app state (user, matches, posts, messages, check-ins, broadcasts)
 lib/
   types.ts             - TypeScript interfaces
   mock-data.ts         - Mock data for development
@@ -41,11 +42,12 @@ constants/
 ```
 
 ## Key Features
-1. **Discover** - Swipe-style card matching (like Hinge)
-2. **Community Feed** - Posts, check-ins, meetup planning
-3. **Explore** - Kid-friendly locations with check-in system
-4. **Chat** - Messaging between matched moms
-5. **Profile** - Bio, kids, interests, badges, privacy settings
+1. **Discover** - Swipe-style card matching (like Hinge), Feed access via top bar
+2. **Meet** - Check-in & broadcast location to friends, nearby moms, or everyone
+3. **Community Feed** - Posts, check-ins, meetup planning (accessed from Discover)
+4. **Explore** - Kid-friendly locations with check-in system
+5. **Chat** - Messaging between matched moms
+6. **Profile** - Bio, kids, interests, badges, privacy settings
 
 ## Design
 - Warm color palette: coral (#E8836B), sage (#6BB8A8), gold (#F5C469)
