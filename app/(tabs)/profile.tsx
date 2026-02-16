@@ -38,21 +38,22 @@ export default function ProfileScreen() {
           <Text style={styles.name}>{user.name}</Text>
           <Text style={styles.neighborhood}>{user.neighborhood}</Text>
 
-          <View style={styles.statsRow}>
-            <View style={styles.statItem}>
-              <Text style={styles.statNumber}>{totalMatches}</Text>
-              <Text style={styles.statLabel}>Matches</Text>
-            </View>
-            <View style={styles.statDivider} />
-            <View style={styles.statItem}>
-              <Text style={styles.statNumber}>{checkIns.length}</Text>
-              <Text style={styles.statLabel}>Check-ins</Text>
-            </View>
-            <View style={styles.statDivider} />
-            <View style={styles.statItem}>
-              <Text style={styles.statNumber}>{earnedBadges.length}</Text>
-              <Text style={styles.statLabel}>Badges</Text>
-            </View>
+        </View>
+
+        <View style={styles.statsRow}>
+          <View style={styles.statItem}>
+            <Text style={styles.statNumber}>{totalMatches}</Text>
+            <Text style={styles.statLabel}>Matches</Text>
+          </View>
+          <View style={styles.statDivider} />
+          <View style={styles.statItem}>
+            <Text style={styles.statNumber}>{checkIns.length}</Text>
+            <Text style={styles.statLabel}>Check-ins</Text>
+          </View>
+          <View style={styles.statDivider} />
+          <View style={styles.statItem}>
+            <Text style={styles.statNumber}>{earnedBadges.length}</Text>
+            <Text style={styles.statLabel}>Badges</Text>
           </View>
         </View>
 
@@ -242,10 +243,11 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     marginTop: 20,
+    marginHorizontal: 16,
     backgroundColor: Colors.white,
     borderRadius: 16,
     paddingVertical: 16,
-    paddingHorizontal: 24,
+    paddingHorizontal: 12,
     shadowColor: '#000',
     shadowOffset: { width: 0, height: 1 },
     shadowOpacity: 0.04,
@@ -255,6 +257,7 @@ const styles = StyleSheet.create({
   statItem: {
     flex: 1,
     alignItems: 'center',
+    minWidth: 0,
   },
   statNumber: {
     fontSize: 20,
@@ -262,15 +265,17 @@ const styles = StyleSheet.create({
     color: Colors.primary,
   },
   statLabel: {
-    fontSize: 12,
+    fontSize: 11,
     fontFamily: 'Nunito_500Medium',
     color: Colors.textTertiary,
     marginTop: 2,
+    textAlign: 'center',
   },
   statDivider: {
     width: 1,
-    height: 30,
+    height: 28,
     backgroundColor: Colors.borderLight,
+    marginHorizontal: 4,
   },
   hangNowCard: {
     flexDirection: 'row',
