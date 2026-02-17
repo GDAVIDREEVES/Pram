@@ -3,7 +3,6 @@ import {
   View, Text, StyleSheet, FlatList, TextInput, Pressable, Platform,
   KeyboardAvoidingView, Modal, ScrollView, Image, ActivityIndicator,
 } from 'react-native';
-import Animated, { useSharedValue, useAnimatedStyle, withTiming } from 'react-native-reanimated';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { useLocalSearchParams, router } from 'expo-router';
@@ -17,7 +16,7 @@ import { CURRENT_USER_ID, locations } from '@/lib/mock-data';
 import { BABY_EMOJI_CATEGORIES } from '@/lib/baby-emojis';
 import { getApiUrl } from '@/lib/query-client';
 
-const PANEL_HEIGHT = 280;
+const PANEL_HEIGHT = 300;
 
 interface GifItem {
   id: string;
@@ -306,7 +305,6 @@ export default function ChatScreen() {
   const [showPanel, setShowPanel] = useState(false);
   const [panelTab, setPanelTab] = useState<'emojis' | 'gifs'>('emojis');
 
-  const panelAnim = useSharedValue(0);
 
   const webTopInset = Platform.OS === 'web' ? 67 : 0;
   const days = getNextDays(14);
@@ -323,21 +321,12 @@ export default function ChatScreen() {
 
   const togglePanel = () => {
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
-    const next = !showPanel;
-    setShowPanel(next);
-    panelAnim.value = withTiming(next ? 1 : 0, { duration: 250 });
+    setShowPanel(prev => !prev);
   };
 
   const closePanel = () => {
     setShowPanel(false);
-    panelAnim.value = withTiming(0, { duration: 200 });
   };
-
-  const panelStyle = useAnimatedStyle(() => ({
-    height: panelAnim.value * PANEL_HEIGHT,
-    opacity: panelAnim.value,
-    overflow: 'hidden' as const,
-  }));
 
   const handleSend = () => {
     if (!inputText.trim() || !matchId) return;
@@ -431,6 +420,7 @@ export default function ChatScreen() {
           <Pressable
             onPress={togglePanel}
             style={({ pressed }) => [styles.attachButton, pressed && { opacity: 0.6 }]}
+            testID="emoji-panel-button"
           >
             <Ionicons
               name={showPanel ? 'happy' : 'happy-outline'}
@@ -462,28 +452,29 @@ export default function ChatScreen() {
         </View>
       </View>
 
-      <Animated.View style={[styles.panelContainer, panelStyle]}>
-        <View style={styles.panelTabBar}>
-          <Pressable
-            style={[styles.panelTabBtn, panelTab === 'emojis' && styles.panelTabBtnActive]}
-            onPress={() => setPanelTab('emojis')}
-          >
-            <Text style={[styles.panelTabText, panelTab === 'emojis' && styles.panelTabTextActive]}>Emojis</Text>
-          </Pressable>
-          <Pressable
-            style={[styles.panelTabBtn, panelTab === 'gifs' && styles.panelTabBtnActive]}
-            onPress={() => setPanelTab('gifs')}
-          >
-            <Text style={[styles.panelTabText, panelTab === 'gifs' && styles.panelTabTextActive]}>GIFs</Text>
-          </Pressable>
+      {showPanel && (
+        <View style={[styles.panelContainer, { height: PANEL_HEIGHT + insets.bottom + (Platform.OS === 'web' ? 34 : 0) }]}>
+          <View style={styles.panelTabBar}>
+            <Pressable
+              style={[styles.panelTabBtn, panelTab === 'emojis' && styles.panelTabBtnActive]}
+              onPress={() => setPanelTab('emojis')}
+            >
+              <Text style={[styles.panelTabText, panelTab === 'emojis' && styles.panelTabTextActive]}>Emojis</Text>
+            </Pressable>
+            <Pressable
+              style={[styles.panelTabBtn, panelTab === 'gifs' && styles.panelTabBtnActive]}
+              onPress={() => setPanelTab('gifs')}
+            >
+              <Text style={[styles.panelTabText, panelTab === 'gifs' && styles.panelTabTextActive]}>GIFs</Text>
+            </Pressable>
+          </View>
+          {panelTab === 'emojis' ? (
+            <EmojiPanel onSelectEmoji={handleSelectEmoji} />
+          ) : (
+            <GifPanel matchId={matchId || ''} onSend={closePanel} />
+          )}
         </View>
-        {panelTab === 'emojis' ? (
-          <EmojiPanel onSelectEmoji={handleSelectEmoji} />
-        ) : (
-          <GifPanel matchId={matchId || ''} onSend={closePanel} />
-        )}
-        <View style={{ height: insets.bottom + (Platform.OS === 'web' ? 34 : 0) }} />
-      </Animated.View>
+      )}
 
       <Modal visible={showMeetupModal} animationType="slide" transparent>
         <View style={styles.modalOverlay}>
