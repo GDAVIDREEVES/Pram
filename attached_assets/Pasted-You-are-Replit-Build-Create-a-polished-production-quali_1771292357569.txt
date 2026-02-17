@@ -1,0 +1,198 @@
+You are Replit Build. Create a polished, production-quality UI for a “Profile” experience in a consumer social app for young, well-off professional (or previously professional) moms with young kids in Brooklyn. The app helps moms meet other moms to grab coffee at local cafes. The UI should feel like an app made by a large company: sophisticated, calm, curated, safety-forward, and premium (think clean typography, generous spacing, neutral palette). 
+
+IMPORTANT
+- Do NOT include scheduling/availability preferences anywhere in this Profile UI. Scheduling will be handled elsewhere in the app.
+- The profile must emphasize safety, trust, and hyper-local Brooklyn neighborhood identity.
+- Keep the design minimal-scroll, scannable, and warm.
+- Build for mobile-first (iPhone). Use modern component patterns (cards, chips, bottom sheet modals, sticky CTA bar).
+- Include light/dark mode support.
+
+SCREENS TO BUILD (at minimum)
+1) Profile View (for browsing another mom’s profile)
+2) Edit Profile (for the current user)
+3) A lightweight “Invite for Coffee” flow UI (bottom sheet or modal, not scheduling-based)
+
+DATA MODEL (use this JSON shape and mock data)
+Profile = {
+  id: string,
+  firstName: string,
+  lastInitial?: string,
+  pronouns?: string, // optional
+  photoUrl: string,
+  neighborhood: string, // required
+  bioPrompts: [
+    { question: string, answer: string },
+    { question: string, answer: string },
+    { question: string, answer: string }
+  ],
+  kids: [
+    { name?: string, ageLabel: string } // ageLabel examples: "7 months", "2 yrs", "4 yrs"
+  ],
+  momStage: string, // auto-generated elsewhere (e.g., "New Mom", "Toddler Mom", "Mixed Ages", "Expecting")
+  vibeTags: string[], // select up to 5
+  coffeeMeetupPreferences: {
+    meetupStyle: string[], // e.g. ["Quick coffee (30 min)", "Walk + coffee", "Long sit-down chat", "Kid-free evening drink"]
+    favoriteSpots: string[] // cafe names
+  },
+  comfortSignals: {
+    strollerFriendlyOnly?: boolean,
+    playgroundAndCafe?: "Playground first" | "Cafe first" | "Either",
+    indoorCafeComfort?: "Yes" | "Sometimes" | "Prefer outdoors"
+  },
+  safety: {
+    phoneVerified: boolean,
+    referredByMember: boolean,
+    neighborhoodHost: boolean
+  },
+  socialProof: {
+    mutualConnectionsCount: number,
+    successfulMeetupsCount: number,
+    ratingAverage?: number // optional
+  },
+  privacy: {
+    showKidsExactAges: boolean,
+    showLastInitial: boolean,
+    neighborhoodVisibility: "My neighborhood only" | "Nearby neighborhoods" | "All Brooklyn"
+  }
+}
+
+MOCK PROFILE CONTENT (use something like this)
+- Name: “Emma L.”
+- Neighborhood: “Carroll Gardens”
+- Mom stage: “Toddler Mom”
+- Kids: [{ageLabel:"7 months"},{ageLabel:"3 yrs"}]
+- Prompts:
+  1) “My ideal coffee catch-up looks like…” → “A stroller walk, then a calm cappuccino and adult conversation.”
+  2) “Before kids, I was…” → “In product marketing, now consulting part-time.”
+  3) “Currently into…” → “Pilates, bakery scouting, and museum trips with the stroller.”
+- Favorite spots: ["Devoción", "Cafe Regular", "Colson Patisserie"]
+- Meetup style: ["Walk + coffee", "Quick coffee (30 min)", "Long sit-down chat"]
+- Safety: phoneVerified=true, referredByMember=true, neighborhoodHost=false
+- Social proof: mutualConnectionsCount=3, successfulMeetupsCount=5, ratingAverage=4.8
+
+PROFILE VIEW UI REQUIREMENTS
+Above the fold (must be visible without scrolling):
+- Large profile photo
+- Name + optional last initial
+- Neighborhood (very prominent)
+- Kids Snapshot (very prominent): show as small icons + age labels (and optionally first name if provided)
+- Safety badges row (compact): “Phone Verified”, “Referred”, “Neighborhood Host” — show only the ones that apply
+
+Next sections (as stacked cards):
+1) Vibe Tags (chips): show up to 5 selected tags
+2) About Me (Prompt cards): 3 prompt Q&A blocks
+3) Coffee & Meetup Preferences:
+   - Favorite Spots (horizontal chips or list with small location pin icon)
+   - Meetup Style (chips)
+4) Comfort Signals (simple, friendly labels):
+   - “Stroller-friendly spaces only” (if true)
+   - “Playground & cafe: [value]”
+   - “Indoor cafes: [value]”
+5) Social Proof (trust card):
+   - “Mutual connections: X”
+   - “Successful meetups: Y”
+   - Optional rating display if present
+
+Sticky Bottom CTA Bar (always visible):
+- Primary CTA button: “Invite for Coffee”
+- Secondary: “Save”
+- Overflow menu (⋯): “Report”, “Block”, “Share profile”
+
+EDIT PROFILE UI REQUIREMENTS
+A multi-step or single-scroll form is fine, but keep it elegant and not overwhelming.
+- Photo upload / change
+- First name + optional last initial toggle
+- Pronouns (optional)
+- Neighborhood (required picker)
+- Kids: add/remove child; per child choose “ageLabel”; optional child name
+- Vibe Tags picker: choose up to 5 from a curated list
+- Prompts editor: select prompt questions from a list and fill answers (max 3)
+- Favorite spots: searchable multi-select list (preload Brooklyn cafes)
+- Meetup style: multi-select chips
+- Comfort signals toggles / segmented controls
+- Privacy settings: show exact ages, show last initial, neighborhood visibility
+
+VIBE TAGS (curated list, no words like “snob / lover / regular”)
+Provide at least 40+ options, such as:
+- Matcha mornings
+- Cappuccino person
+- Decaf life
+- Bakery scouting
+- Park strolls
+- Playground chats
+- Museum days
+- Library storytime
+- Stroller walks
+- Babywearing
+- Toddler wrangling
+- Newborn haze
+- Sleep training survivor
+- Gentle parenting
+- No-pressure parenting
+- Structured routines
+- Go-with-the-flow
+- Introvert energy
+- Extrovert energy
+- Small talk ok
+- Deep chats
+- Book club vibes
+- Podcast person
+- Wellness-minded
+- Pilates
+- Yoga
+- Running stroller
+- Strength training
+- Foodie mom
+- Home cooking
+- Takeout aficionado
+- Wine night (kid-free)
+- Mocktails
+- Artsy
+- Design-minded
+- Fashion-minded
+- Minimalist
+- Vintage finds
+- Thrifting
+- Weekend markets
+- Brooklyn events
+- Travel dreams
+- Work in progress
+- Career pivot
+- Consulting part-time
+- Back to work soon
+- SAHM era
+- Nanny share
+- Daycare drop-off
+- Public school parent
+- Private school parent
+- Montessori curious
+- Language immersion
+- City kid adventures
+
+INVITE FOR COFFEE FLOW (no scheduling)
+When tapping “Invite for Coffee,” open a bottom sheet/modal with:
+- A short friendly pre-filled message template that can be edited
+- A “Suggested Spots” list pulled from the other user’s favoriteSpots + nearby defaults
+- A “Meetup Style” selector (chips) limited to the recipient’s meetupStyle options
+- Send button
+- Include a “Safety note” microcopy: “Meet in public places. You control who can message you.”
+
+VISUAL / INTERACTION DETAILS
+- Use a calm premium UI: rounded cards, subtle borders, soft shadows, neutral palette.
+- Typography: clear hierarchy (name large, neighborhood medium, sections with labels).
+- Chips should feel tactile and modern.
+- Animations: subtle (modal slide-up, chip selection).
+- Empty states: if no prompts or no favorite spots, show tasteful placeholder.
+- Accessibility: adequate contrast, large touch targets.
+
+TECHNICAL
+- Build using a modern front-end stack (React recommended). 
+- Include mock data + basic state management for editing fields.
+- No backend required; keep everything local/in-memory.
+- Provide clean component structure: ProfileView, ProfileEdit, InviteModal, TagPicker, PromptEditor, etc.
+
+DELIVERABLE
+Return working code that renders the 3 screens and allows:
+- Viewing a sample profile
+- Editing the profile and seeing changes reflected
+- Opening the Invite modal and “sending” (show a success toast)

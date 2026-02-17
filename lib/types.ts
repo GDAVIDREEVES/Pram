@@ -12,17 +12,46 @@ export interface Mom {
   hangNow: boolean;
   lastActive: string;
   prompts: ProfilePrompt[];
+  vibeTags?: string[];
+  coffeeMeetupPreferences?: CoffeeMeetupPreferences;
+  comfortSignals?: ComfortSignals;
+  safety?: SafetyInfo;
+  socialProof?: SocialProof;
 }
 
 export interface Kid {
   name: string;
   age: number;
+  ageLabel?: string;
   gender: 'boy' | 'girl';
 }
 
 export interface ProfilePrompt {
   question: string;
   answer: string;
+}
+
+export interface CoffeeMeetupPreferences {
+  meetupStyle: string[];
+  favoriteSpots: string[];
+}
+
+export interface ComfortSignals {
+  strollerFriendlyOnly?: boolean;
+  playgroundAndCafe?: 'Playground first' | 'Cafe first' | 'Either';
+  indoorCafeComfort?: 'Yes' | 'Sometimes' | 'Prefer outdoors';
+}
+
+export interface SafetyInfo {
+  phoneVerified: boolean;
+  referredByMember: boolean;
+  neighborhoodHost: boolean;
+}
+
+export interface SocialProof {
+  mutualConnectionsCount: number;
+  successfulMeetupsCount: number;
+  ratingAverage?: number;
 }
 
 export interface Match {
