@@ -148,4 +148,5 @@ export interface Message {
   timestamp: string;
   read: boolean;
   meetup?: MeetupAttachment;
+  gifUrl?: string;
 }

@@ -1,17 +1,31 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect, useRef, useCallback } from 'react';
 import {
   View, Text, StyleSheet, FlatList, TextInput, Pressable, Platform,
-  KeyboardAvoidingView, Modal, ScrollView,
+  KeyboardAvoidingView, Modal, ScrollView, Image, ActivityIndicator,
 } from 'react-native';
+import Animated, { useSharedValue, useAnimatedStyle, withTiming } from 'react-native-reanimated';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { useLocalSearchParams, router } from 'expo-router';
 import * as Haptics from 'expo-haptics';
+import { fetch } from 'expo/fetch';
 import Colors from '@/constants/colors';
 import { useApp } from '@/contexts/AppContext';
 import Avatar from '@/components/Avatar';
 import { Message, MeetupAttachment } from '@/lib/types';
 import { CURRENT_USER_ID, locations } from '@/lib/mock-data';
+import { BABY_EMOJI_CATEGORIES } from '@/lib/baby-emojis';
+import { getApiUrl } from '@/lib/query-client';
+
+const PANEL_HEIGHT = 280;
+
+interface GifItem {
+  id: string;
+  url: string;
+  preview: string;
+  width: number;
+  height: number;
+}
 
 function timeFormat(dateStr: string): string {
   const d = new Date(dateStr);
@@ -70,9 +84,27 @@ function MeetupBubble({ message, isOwn }: { message: Message; isOwn: boolean }) 
   );
 }
 
+function GifBubble({ message, isOwn }: { message: Message; isOwn: boolean }) {
+  return (
+    <View style={[styles.bubbleContainer, isOwn && styles.bubbleContainerOwn]}>
+      <View style={styles.gifBubbleWrap}>
+        <Image
+          source={{ uri: message.gifUrl }}
+          style={styles.gifBubbleImage}
+          resizeMode="cover"
+        />
+        <Text style={[styles.bubbleTime, { color: Colors.textTertiary, marginTop: 4 }]}>{timeFormat(message.timestamp)}</Text>
+      </View>
+    </View>
+  );
+}
+
 function MessageBubble({ message, isOwn }: { message: Message; isOwn: boolean }) {
   if (message.meetup) {
     return <MeetupBubble message={message} isOwn={isOwn} />;
+  }
+  if (message.gifUrl) {
+    return <GifBubble message={message} isOwn={isOwn} />;
   }
   return (
     <View style={[styles.bubbleContainer, isOwn && styles.bubbleContainerOwn]}>
@@ -107,6 +139,158 @@ function getNextDays(count: number): { label: string; value: string }[] {
   return days;
 }
 
+function EmojiPanel({ onSelectEmoji }: { onSelectEmoji: (emoji: string) => void }) {
+  const [selectedCategory, setSelectedCategory] = useState(0);
+  const category = BABY_EMOJI_CATEGORIES[selectedCategory];
+
+  return (
+    <View style={styles.emojiPanel}>
+      <ScrollView
+        horizontal
+        showsHorizontalScrollIndicator={false}
+        contentContainerStyle={styles.emojiCategoryBar}
+      >
+        {BABY_EMOJI_CATEGORIES.map((cat, idx) => (
+          <Pressable
+            key={cat.name}
+            onPress={() => setSelectedCategory(idx)}
+            style={[
+              styles.emojiCategoryTab,
+              selectedCategory === idx && styles.emojiCategoryTabActive,
+            ]}
+          >
+            <Text style={styles.emojiCategoryIcon}>{cat.icon}</Text>
+          </Pressable>
+        ))}
+      </ScrollView>
+      <FlatList
+        data={category.emojis}
+        numColumns={6}
+        keyExtractor={(item, index) => `${category.name}_${index}`}
+        renderItem={({ item }) => (
+          <Pressable
+            style={styles.emojiItem}
+            onPress={() => {
+              Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+              onSelectEmoji(item);
+            }}
+          >
+            <Text style={styles.emojiText}>{item}</Text>
+          </Pressable>
+        )}
+        showsVerticalScrollIndicator={false}
+        contentContainerStyle={{ paddingBottom: 8 }}
+      />
+    </View>
+  );
+}
+
+function GifPanel({ matchId, onSend }: { matchId: string; onSend: () => void }) {
+  const { sendGifMessage } = useApp();
+  const [gifs, setGifs] = useState<GifItem[]>([]);
+  const [searchQuery, setSearchQuery] = useState('');
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState('');
+  const searchTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  const fetchGifs = useCallback(async (query?: string) => {
+    setLoading(true);
+    setError('');
+    try {
+      const baseUrl = getApiUrl();
+      const url = query
+        ? `${baseUrl}api/gifs/search?q=${encodeURIComponent(query)}`
+        : `${baseUrl}api/gifs/trending`;
+      const res = await fetch(url);
+      if (!res.ok) throw new Error('Failed to load GIFs');
+      const data = await res.json();
+      setGifs(data.gifs || []);
+    } catch (e: any) {
+      setError(e.message || 'Something went wrong');
+      setGifs([]);
+    } finally {
+      setLoading(false);
+    }
+  }, []);
+
+  useEffect(() => {
+    fetchGifs();
+  }, [fetchGifs]);
+
+  const handleSearchChange = (text: string) => {
+    setSearchQuery(text);
+    if (searchTimeoutRef.current) clearTimeout(searchTimeoutRef.current);
+    searchTimeoutRef.current = setTimeout(() => {
+      if (text.trim()) {
+        fetchGifs(text.trim());
+      } else {
+        fetchGifs();
+      }
+    }, 300);
+  };
+
+  const handleSelectGif = (gif: GifItem) => {
+    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+    sendGifMessage(matchId, gif.url);
+    onSend();
+  };
+
+  return (
+    <View style={styles.gifPanel}>
+      <View style={styles.gifSearchBar}>
+        <Ionicons name="search" size={16} color={Colors.textTertiary} />
+        <TextInput
+          style={styles.gifSearchInput}
+          placeholder="Search GIFs..."
+          placeholderTextColor={Colors.textTertiary}
+          value={searchQuery}
+          onChangeText={handleSearchChange}
+        />
+      </View>
+      {loading ? (
+        <View style={styles.gifCenterState}>
+          <ActivityIndicator size="small" color={Colors.primary} />
+        </View>
+      ) : error ? (
+        <View style={styles.gifCenterState}>
+          <Text style={styles.gifErrorText}>{error}</Text>
+        </View>
+      ) : (
+        <FlatList
+          data={gifs}
+          numColumns={2}
+          keyExtractor={(item) => item.id}
+          renderItem={({ item }) => (
+            <Pressable
+              style={styles.gifItemWrap}
+              onPress={() => handleSelectGif(item)}
+            >
+              <Image
+                source={{ uri: item.preview || item.url }}
+                style={styles.gifItemImage}
+                resizeMode="cover"
+              />
+            </Pressable>
+          )}
+          showsVerticalScrollIndicator={false}
+          contentContainerStyle={{ paddingHorizontal: 4, paddingBottom: 4 }}
+          columnWrapperStyle={{ gap: 4 }}
+          ListEmptyComponent={
+            <View style={styles.gifCenterState}>
+              <Text style={styles.gifErrorText}>No GIFs found</Text>
+            </View>
+          }
+          ListFooterComponent={
+            gifs.length > 0 ? (
+              <Text style={styles.giphyAttribution}>Powered by GIPHY</Text>
+            ) : null
+          }
+        />
+      )}
+    </View>
+  );
+}
+
 export default function ChatScreen() {
   const insets = useSafeAreaInsets();
   const { matchId, momId } = useLocalSearchParams<{ matchId: string; momId: string }>();
@@ -119,6 +303,10 @@ export default function ChatScreen() {
   const [selectedTime, setSelectedTime] = useState('');
   const [meetupNote, setMeetupNote] = useState('');
   const [locationSearch, setLocationSearch] = useState('');
+  const [showPanel, setShowPanel] = useState(false);
+  const [panelTab, setPanelTab] = useState<'emojis' | 'gifs'>('emojis');
+
+  const panelAnim = useSharedValue(0);
 
   const webTopInset = Platform.OS === 'web' ? 67 : 0;
   const days = getNextDays(14);
@@ -132,6 +320,24 @@ export default function ChatScreen() {
   const filteredLocations = locations.filter(loc =>
     !locationSearch || loc.name.toLowerCase().includes(locationSearch.toLowerCase())
   );
+
+  const togglePanel = () => {
+    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+    const next = !showPanel;
+    setShowPanel(next);
+    panelAnim.value = withTiming(next ? 1 : 0, { duration: 250 });
+  };
+
+  const closePanel = () => {
+    setShowPanel(false);
+    panelAnim.value = withTiming(0, { duration: 200 });
+  };
+
+  const panelStyle = useAnimatedStyle(() => ({
+    height: panelAnim.value * PANEL_HEIGHT,
+    opacity: panelAnim.value,
+    overflow: 'hidden' as const,
+  }));
 
   const handleSend = () => {
     if (!inputText.trim() || !matchId) return;
@@ -169,6 +375,10 @@ export default function ChatScreen() {
     };
     sendMeetupMessage(matchId, meetup);
     setShowMeetupModal(false);
+  };
+
+  const handleSelectEmoji = (emoji: string) => {
+    setInputText(prev => prev + emoji);
   };
 
   if (!mom) {
@@ -209,7 +419,7 @@ export default function ChatScreen() {
         inverted
       />
 
-      <View style={[styles.inputContainer, { paddingBottom: insets.bottom + (Platform.OS === 'web' ? 34 : 8) }]}>
+      <View style={[styles.inputContainer, { paddingBottom: showPanel ? 0 : insets.bottom + (Platform.OS === 'web' ? 34 : 8) }]}>
         <View style={styles.inputRow}>
           <Pressable
             onPress={handleOpenMeetup}
@@ -217,6 +427,16 @@ export default function ChatScreen() {
             testID="meetup-attach-button"
           >
             <Ionicons name="calendar" size={22} color={Colors.accent} />
+          </Pressable>
+          <Pressable
+            onPress={togglePanel}
+            style={({ pressed }) => [styles.attachButton, pressed && { opacity: 0.6 }]}
+          >
+            <Ionicons
+              name={showPanel ? 'happy' : 'happy-outline'}
+              size={22}
+              color={Colors.secondary}
+            />
           </Pressable>
           <TextInput
             style={styles.input}
@@ -226,6 +446,7 @@ export default function ChatScreen() {
             onChangeText={setInputText}
             multiline
             maxLength={500}
+            onFocus={closePanel}
           />
           <Pressable
             onPress={handleSend}
@@ -240,6 +461,29 @@ export default function ChatScreen() {
           </Pressable>
         </View>
       </View>
+
+      <Animated.View style={[styles.panelContainer, panelStyle]}>
+        <View style={styles.panelTabBar}>
+          <Pressable
+            style={[styles.panelTabBtn, panelTab === 'emojis' && styles.panelTabBtnActive]}
+            onPress={() => setPanelTab('emojis')}
+          >
+            <Text style={[styles.panelTabText, panelTab === 'emojis' && styles.panelTabTextActive]}>Emojis</Text>
+          </Pressable>
+          <Pressable
+            style={[styles.panelTabBtn, panelTab === 'gifs' && styles.panelTabBtnActive]}
+            onPress={() => setPanelTab('gifs')}
+          >
+            <Text style={[styles.panelTabText, panelTab === 'gifs' && styles.panelTabTextActive]}>GIFs</Text>
+          </Pressable>
+        </View>
+        {panelTab === 'emojis' ? (
+          <EmojiPanel onSelectEmoji={handleSelectEmoji} />
+        ) : (
+          <GifPanel matchId={matchId || ''} onSend={closePanel} />
+        )}
+        <View style={{ height: insets.bottom + (Platform.OS === 'web' ? 34 : 0) }} />
+      </Animated.View>
 
       <Modal visible={showMeetupModal} animationType="slide" transparent>
         <View style={styles.modalOverlay}>
@@ -459,6 +703,14 @@ const styles = StyleSheet.create({
   bubbleTimeOwn: {
     color: 'rgba(255,255,255,0.7)',
   },
+  gifBubbleWrap: {
+    maxWidth: '65%',
+  },
+  gifBubbleImage: {
+    width: 200,
+    height: 150,
+    borderRadius: 16,
+  },
   meetupCard: {
     maxWidth: '82%',
     borderRadius: 16,
@@ -572,6 +824,113 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
     marginBottom: 1,
+  },
+  panelContainer: {
+    backgroundColor: Colors.white,
+    borderTopWidth: 1,
+    borderTopColor: Colors.borderLight,
+  },
+  panelTabBar: {
+    flexDirection: 'row',
+    borderBottomWidth: 1,
+    borderBottomColor: Colors.borderLight,
+  },
+  panelTabBtn: {
+    flex: 1,
+    paddingVertical: 10,
+    alignItems: 'center',
+  },
+  panelTabBtnActive: {
+    borderBottomWidth: 2,
+    borderBottomColor: Colors.primary,
+  },
+  panelTabText: {
+    fontSize: 14,
+    fontFamily: 'Nunito_600SemiBold',
+    color: Colors.textTertiary,
+  },
+  panelTabTextActive: {
+    color: Colors.primary,
+  },
+  emojiPanel: {
+    flex: 1,
+  },
+  emojiCategoryBar: {
+    paddingHorizontal: 8,
+    paddingVertical: 6,
+    gap: 2,
+  },
+  emojiCategoryTab: {
+    width: 40,
+    height: 34,
+    borderRadius: 8,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  emojiCategoryTabActive: {
+    backgroundColor: Colors.blush,
+  },
+  emojiCategoryIcon: {
+    fontSize: 20,
+  },
+  emojiItem: {
+    flex: 1,
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingVertical: 6,
+  },
+  emojiText: {
+    fontSize: 28,
+  },
+  gifPanel: {
+    flex: 1,
+  },
+  gifSearchBar: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginHorizontal: 12,
+    marginVertical: 8,
+    backgroundColor: Colors.backgroundSecondary,
+    borderRadius: 10,
+    paddingHorizontal: 10,
+    paddingVertical: 6,
+  },
+  gifSearchInput: {
+    flex: 1,
+    fontSize: 14,
+    fontFamily: 'Nunito_400Regular',
+    color: Colors.text,
+    marginLeft: 8,
+    paddingVertical: 2,
+  },
+  gifCenterState: {
+    flex: 1,
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingVertical: 40,
+  },
+  gifErrorText: {
+    fontSize: 13,
+    fontFamily: 'Nunito_400Regular',
+    color: Colors.textTertiary,
+  },
+  gifItemWrap: {
+    flex: 1,
+    margin: 2,
+    borderRadius: 8,
+    overflow: 'hidden',
+  },
+  gifItemImage: {
+    width: '100%',
+    height: 100,
+    borderRadius: 8,
+  },
+  giphyAttribution: {
+    textAlign: 'center',
+    fontSize: 11,
+    fontFamily: 'Nunito_400Regular',
+    color: Colors.textTertiary,
+    paddingVertical: 8,
   },
   modalOverlay: {
     flex: 1,

@@ -26,6 +26,7 @@ interface AppContextValue {
   messages: Record<string, Message[]>;
   sendMessage: (matchId: string, content: string) => void;
   sendMeetupMessage: (matchId: string, meetup: MeetupAttachment) => void;
+  sendGifMessage: (matchId: string, gifUrl: string) => void;
   checkIns: CheckIn[];
   checkIn: (locationId: string) => void;
   broadcasts: MeetBroadcast[];
@@ -230,6 +231,25 @@ export function AppProvider({ children }: { children: ReactNode }) {
     ));
   }, []);
 
+  const sendGifMessage = useCallback((matchId: string, gifUrl: string) => {
+    const newMsg: Message = {
+      id: `msg_${Date.now()}`,
+      matchId,
+      senderId: CURRENT_USER_ID,
+      content: 'GIF',
+      timestamp: new Date().toISOString(),
+      read: true,
+      gifUrl,
+    };
+    setMessagesMap(prev => ({
+      ...prev,
+      [matchId]: [...(prev[matchId] || []), newMsg],
+    }));
+    setMatches(prev => prev.map(m =>
+      m.id === matchId ? { ...m, lastMessage: 'Sent a GIF', unread: 0 } : m
+    ));
+  }, []);
+
   const checkIn = useCallback((locationId: string) => {
     const newCheckIn: CheckIn = {
       id: `checkin_${Date.now()}`,
@@ -292,6 +312,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
     messages: messagesMap,
     sendMessage,
     sendMeetupMessage,
+    sendGifMessage,
     checkIns,
     checkIn,
     broadcasts,
@@ -302,7 +323,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
     toggleHangNow,
     getMomById,
     isLoading,
-  }), [user, updateUser, discoveryQueue, likeMom, skipMom, matches, posts, addPost, likePost, addComment, messagesMap, sendMessage, sendMeetupMessage, checkIns, checkIn, broadcasts, createBroadcast, respondToBroadcast, userBadges, hangNow, toggleHangNow, getMomById, isLoading]);
+  }), [user, updateUser, discoveryQueue, likeMom, skipMom, matches, posts, addPost, likePost, addComment, messagesMap, sendMessage, sendMeetupMessage, sendGifMessage, checkIns, checkIn, broadcasts, createBroadcast, respondToBroadcast, userBadges, hangNow, toggleHangNow, getMomById, isLoading]);
 
   return (
     <AppContext.Provider value={value}>
