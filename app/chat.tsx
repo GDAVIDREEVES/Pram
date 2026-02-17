@@ -13,7 +13,7 @@ import { useApp } from '@/contexts/AppContext';
 import Avatar from '@/components/Avatar';
 import { Message, MeetupAttachment } from '@/lib/types';
 import { CURRENT_USER_ID, locations } from '@/lib/mock-data';
-import { BABY_EMOJI_CATEGORIES } from '@/lib/baby-emojis';
+import { STICKER_CATEGORIES, STICKER_MAP } from '@/lib/baby-emojis';
 import { getApiUrl } from '@/lib/query-client';
 
 const PANEL_HEIGHT = 300;
@@ -98,12 +98,32 @@ function GifBubble({ message, isOwn }: { message: Message; isOwn: boolean }) {
   );
 }
 
+function StickerBubble({ message, isOwn }: { message: Message; isOwn: boolean }) {
+  const stickerSource = STICKER_MAP[message.stickerId || ''];
+  if (!stickerSource) return null;
+  return (
+    <View style={[styles.bubbleContainer, isOwn && styles.bubbleContainerOwn]}>
+      <View style={styles.stickerBubbleWrap}>
+        <Image
+          source={stickerSource}
+          style={styles.stickerBubbleImage}
+          resizeMode="contain"
+        />
+        <Text style={[styles.bubbleTime, { color: Colors.textTertiary, marginTop: 2 }]}>{timeFormat(message.timestamp)}</Text>
+      </View>
+    </View>
+  );
+}
+
 function MessageBubble({ message, isOwn }: { message: Message; isOwn: boolean }) {
   if (message.meetup) {
     return <MeetupBubble message={message} isOwn={isOwn} />;
   }
   if (message.gifUrl) {
     return <GifBubble message={message} isOwn={isOwn} />;
+  }
+  if (message.stickerId) {
+    return <StickerBubble message={message} isOwn={isOwn} />;
   }
   return (
     <View style={[styles.bubbleContainer, isOwn && styles.bubbleContainerOwn]}>
@@ -138,47 +158,50 @@ function getNextDays(count: number): { label: string; value: string }[] {
   return days;
 }
 
-function EmojiPanel({ onSelectEmoji }: { onSelectEmoji: (emoji: string) => void }) {
+function StickerPanel({ onSelectSticker }: { onSelectSticker: (stickerId: string) => void }) {
   const [selectedCategory, setSelectedCategory] = useState(0);
-  const category = BABY_EMOJI_CATEGORIES[selectedCategory];
+  const category = STICKER_CATEGORIES[selectedCategory];
 
   return (
-    <View style={styles.emojiPanel}>
+    <View style={styles.stickerPanel}>
       <ScrollView
         horizontal
         showsHorizontalScrollIndicator={false}
-        contentContainerStyle={styles.emojiCategoryBar}
+        contentContainerStyle={styles.stickerCategoryBar}
       >
-        {BABY_EMOJI_CATEGORIES.map((cat, idx) => (
+        {STICKER_CATEGORIES.map((cat, idx) => (
           <Pressable
             key={cat.name}
             onPress={() => setSelectedCategory(idx)}
             style={[
-              styles.emojiCategoryTab,
-              selectedCategory === idx && styles.emojiCategoryTabActive,
+              styles.stickerCategoryTab,
+              selectedCategory === idx && styles.stickerCategoryTabActive,
             ]}
           >
-            <Text style={styles.emojiCategoryIcon}>{cat.icon}</Text>
+            <Text style={[
+              styles.stickerCategoryLabel,
+              selectedCategory === idx && styles.stickerCategoryLabelActive,
+            ]}>{cat.name}</Text>
           </Pressable>
         ))}
       </ScrollView>
       <FlatList
-        data={category.emojis}
-        numColumns={6}
-        keyExtractor={(item, index) => `${category.name}_${index}`}
+        data={category.stickers}
+        numColumns={4}
+        keyExtractor={(item) => item.id}
         renderItem={({ item }) => (
           <Pressable
-            style={styles.emojiItem}
+            style={styles.stickerItem}
             onPress={() => {
               Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
-              onSelectEmoji(item);
+              onSelectSticker(item.id);
             }}
           >
-            <Text style={styles.emojiText}>{item}</Text>
+            <Image source={item.source} style={styles.stickerItemImage} resizeMode="contain" />
           </Pressable>
         )}
         showsVerticalScrollIndicator={false}
-        contentContainerStyle={{ paddingBottom: 8 }}
+        contentContainerStyle={{ paddingBottom: 8, paddingHorizontal: 4 }}
       />
     </View>
   );
@@ -293,7 +316,7 @@ function GifPanel({ matchId, onSend }: { matchId: string; onSend: () => void }) 
 export default function ChatScreen() {
   const insets = useSafeAreaInsets();
   const { matchId, momId } = useLocalSearchParams<{ matchId: string; momId: string }>();
-  const { messages, sendMessage, sendMeetupMessage, getMomById } = useApp();
+  const { messages, sendMessage, sendMeetupMessage, sendStickerMessage, getMomById } = useApp();
   const [inputText, setInputText] = useState('');
   const [showMeetupModal, setShowMeetupModal] = useState(false);
   const [meetupStep, setMeetupStep] = useState<'location' | 'details'>('location');
@@ -303,7 +326,7 @@ export default function ChatScreen() {
   const [meetupNote, setMeetupNote] = useState('');
   const [locationSearch, setLocationSearch] = useState('');
   const [showPanel, setShowPanel] = useState(false);
-  const [panelTab, setPanelTab] = useState<'emojis' | 'gifs'>('emojis');
+  const [panelTab, setPanelTab] = useState<'stickers' | 'gifs'>('stickers');
 
 
   const webTopInset = Platform.OS === 'web' ? 67 : 0;
@@ -366,8 +389,10 @@ export default function ChatScreen() {
     setShowMeetupModal(false);
   };
 
-  const handleSelectEmoji = (emoji: string) => {
-    setInputText(prev => prev + emoji);
+  const handleSelectSticker = (stickerId: string) => {
+    if (!matchId) return;
+    sendStickerMessage(matchId, stickerId);
+    setShowPanel(false);
   };
 
   if (!mom) {
@@ -456,10 +481,10 @@ export default function ChatScreen() {
         <View style={[styles.panelContainer, { height: PANEL_HEIGHT + insets.bottom + (Platform.OS === 'web' ? 34 : 0) }]}>
           <View style={styles.panelTabBar}>
             <Pressable
-              style={[styles.panelTabBtn, panelTab === 'emojis' && styles.panelTabBtnActive]}
-              onPress={() => setPanelTab('emojis')}
+              style={[styles.panelTabBtn, panelTab === 'stickers' && styles.panelTabBtnActive]}
+              onPress={() => setPanelTab('stickers')}
             >
-              <Text style={[styles.panelTabText, panelTab === 'emojis' && styles.panelTabTextActive]}>Emojis</Text>
+              <Text style={[styles.panelTabText, panelTab === 'stickers' && styles.panelTabTextActive]}>Stickers</Text>
             </Pressable>
             <Pressable
               style={[styles.panelTabBtn, panelTab === 'gifs' && styles.panelTabBtnActive]}
@@ -468,8 +493,8 @@ export default function ChatScreen() {
               <Text style={[styles.panelTabText, panelTab === 'gifs' && styles.panelTabTextActive]}>GIFs</Text>
             </Pressable>
           </View>
-          {panelTab === 'emojis' ? (
-            <EmojiPanel onSelectEmoji={handleSelectEmoji} />
+          {panelTab === 'stickers' ? (
+            <StickerPanel onSelectSticker={handleSelectSticker} />
           ) : (
             <GifPanel matchId={matchId || ''} onSend={closePanel} />
           )}
@@ -843,35 +868,47 @@ const styles = StyleSheet.create({
   panelTabTextActive: {
     color: Colors.primary,
   },
-  emojiPanel: {
+  stickerPanel: {
     flex: 1,
   },
-  emojiCategoryBar: {
+  stickerCategoryBar: {
     paddingHorizontal: 8,
     paddingVertical: 6,
-    gap: 2,
+    gap: 4,
   },
-  emojiCategoryTab: {
-    width: 40,
-    height: 34,
-    borderRadius: 8,
-    alignItems: 'center',
-    justifyContent: 'center',
+  stickerCategoryTab: {
+    paddingHorizontal: 14,
+    paddingVertical: 6,
+    borderRadius: 16,
   },
-  emojiCategoryTabActive: {
+  stickerCategoryTabActive: {
     backgroundColor: Colors.blush,
   },
-  emojiCategoryIcon: {
-    fontSize: 20,
+  stickerCategoryLabel: {
+    fontSize: 13,
+    fontFamily: 'Nunito_600SemiBold',
+    color: Colors.textTertiary,
   },
-  emojiItem: {
+  stickerCategoryLabelActive: {
+    color: Colors.primary,
+  },
+  stickerItem: {
     flex: 1,
     alignItems: 'center',
     justifyContent: 'center',
-    paddingVertical: 6,
+    padding: 6,
   },
-  emojiText: {
-    fontSize: 28,
+  stickerItemImage: {
+    width: 72,
+    height: 72,
+  },
+  stickerBubbleWrap: {
+    maxWidth: '65%',
+    alignItems: 'center',
+  },
+  stickerBubbleImage: {
+    width: 140,
+    height: 140,
   },
   gifPanel: {
     flex: 1,

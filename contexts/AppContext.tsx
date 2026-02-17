@@ -27,6 +27,7 @@ interface AppContextValue {
   sendMessage: (matchId: string, content: string) => void;
   sendMeetupMessage: (matchId: string, meetup: MeetupAttachment) => void;
   sendGifMessage: (matchId: string, gifUrl: string) => void;
+  sendStickerMessage: (matchId: string, stickerId: string) => void;
   checkIns: CheckIn[];
   checkIn: (locationId: string) => void;
   broadcasts: MeetBroadcast[];
@@ -250,6 +251,25 @@ export function AppProvider({ children }: { children: ReactNode }) {
     ));
   }, []);
 
+  const sendStickerMessage = useCallback((matchId: string, stickerId: string) => {
+    const newMsg: Message = {
+      id: `msg_${Date.now()}`,
+      matchId,
+      senderId: CURRENT_USER_ID,
+      content: 'Sticker',
+      timestamp: new Date().toISOString(),
+      read: true,
+      stickerId,
+    };
+    setMessagesMap(prev => ({
+      ...prev,
+      [matchId]: [...(prev[matchId] || []), newMsg],
+    }));
+    setMatches(prev => prev.map(m =>
+      m.id === matchId ? { ...m, lastMessage: 'Sent a sticker', unread: 0 } : m
+    ));
+  }, []);
+
   const checkIn = useCallback((locationId: string) => {
     const newCheckIn: CheckIn = {
       id: `checkin_${Date.now()}`,
@@ -313,6 +333,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
     sendMessage,
     sendMeetupMessage,
     sendGifMessage,
+    sendStickerMessage,
     checkIns,
     checkIn,
     broadcasts,
@@ -323,7 +344,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
     toggleHangNow,
     getMomById,
     isLoading,
-  }), [user, updateUser, discoveryQueue, likeMom, skipMom, matches, posts, addPost, likePost, addComment, messagesMap, sendMessage, sendMeetupMessage, sendGifMessage, checkIns, checkIn, broadcasts, createBroadcast, respondToBroadcast, userBadges, hangNow, toggleHangNow, getMomById, isLoading]);
+  }), [user, updateUser, discoveryQueue, likeMom, skipMom, matches, posts, addPost, likePost, addComment, messagesMap, sendMessage, sendMeetupMessage, sendGifMessage, sendStickerMessage, checkIns, checkIn, broadcasts, createBroadcast, respondToBroadcast, userBadges, hangNow, toggleHangNow, getMomById, isLoading]);
 
   return (
     <AppContext.Provider value={value}>

@@ -149,4 +149,5 @@ export interface Message {
   read: boolean;
   meetup?: MeetupAttachment;
   gifUrl?: string;
+  stickerId?: string;
 }
