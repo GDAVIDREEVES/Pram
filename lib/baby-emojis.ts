@@ -63,9 +63,9 @@ export const STICKER_CATEGORIES: StickerCategory[] = [
   },
 ];
 
+export const ALL_STICKERS: Sticker[] = STICKER_CATEGORIES.flatMap(cat => cat.stickers);
+
 export const STICKER_MAP: Record<string, any> = {};
-STICKER_CATEGORIES.forEach(cat => {
-  cat.stickers.forEach(s => {
-    STICKER_MAP[s.id] = s.source;
-  });
+ALL_STICKERS.forEach(s => {
+  STICKER_MAP[s.id] = s.source;
 });

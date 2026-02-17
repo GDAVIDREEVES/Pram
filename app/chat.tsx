@@ -13,7 +13,7 @@ import { useApp } from '@/contexts/AppContext';
 import Avatar from '@/components/Avatar';
 import { Message, MeetupAttachment } from '@/lib/types';
 import { CURRENT_USER_ID, locations } from '@/lib/mock-data';
-import { STICKER_CATEGORIES, STICKER_MAP } from '@/lib/baby-emojis';
+import { ALL_STICKERS, STICKER_MAP } from '@/lib/baby-emojis';
 import { getApiUrl } from '@/lib/query-client';
 
 const PANEL_HEIGHT = 300;
@@ -159,34 +159,26 @@ function getNextDays(count: number): { label: string; value: string }[] {
 }
 
 function StickerPanel({ onSelectSticker }: { onSelectSticker: (stickerId: string) => void }) {
-  const [selectedCategory, setSelectedCategory] = useState(0);
-  const category = STICKER_CATEGORIES[selectedCategory];
+  const [searchQuery, setSearchQuery] = useState('');
+
+  const filtered = searchQuery.trim()
+    ? ALL_STICKERS.filter(s => s.label.toLowerCase().includes(searchQuery.toLowerCase()))
+    : ALL_STICKERS;
 
   return (
     <View style={styles.stickerPanel}>
-      <ScrollView
-        horizontal
-        showsHorizontalScrollIndicator={false}
-        contentContainerStyle={styles.stickerCategoryBar}
-      >
-        {STICKER_CATEGORIES.map((cat, idx) => (
-          <Pressable
-            key={cat.name}
-            onPress={() => setSelectedCategory(idx)}
-            style={[
-              styles.stickerCategoryTab,
-              selectedCategory === idx && styles.stickerCategoryTabActive,
-            ]}
-          >
-            <Text style={[
-              styles.stickerCategoryLabel,
-              selectedCategory === idx && styles.stickerCategoryLabelActive,
-            ]}>{cat.name}</Text>
-          </Pressable>
-        ))}
-      </ScrollView>
+      <View style={styles.stickerSearchBar}>
+        <Ionicons name="search" size={16} color={Colors.textTertiary} />
+        <TextInput
+          style={styles.stickerSearchInput}
+          placeholder="Search stickers..."
+          placeholderTextColor={Colors.textTertiary}
+          value={searchQuery}
+          onChangeText={setSearchQuery}
+        />
+      </View>
       <FlatList
-        data={category.stickers}
+        data={filtered}
         numColumns={4}
         keyExtractor={(item) => item.id}
         renderItem={({ item }) => (
@@ -202,6 +194,11 @@ function StickerPanel({ onSelectSticker }: { onSelectSticker: (stickerId: string
         )}
         showsVerticalScrollIndicator={false}
         contentContainerStyle={{ paddingBottom: 8, paddingHorizontal: 4 }}
+        ListEmptyComponent={
+          <View style={styles.stickerEmptyState}>
+            <Text style={styles.stickerEmptyText}>No stickers found</Text>
+          </View>
+        }
       />
     </View>
   );
@@ -871,26 +868,33 @@ const styles = StyleSheet.create({
   stickerPanel: {
     flex: 1,
   },
-  stickerCategoryBar: {
-    paddingHorizontal: 8,
+  stickerSearchBar: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginHorizontal: 12,
+    marginVertical: 8,
+    backgroundColor: Colors.backgroundSecondary,
+    borderRadius: 10,
+    paddingHorizontal: 10,
     paddingVertical: 6,
-    gap: 4,
   },
-  stickerCategoryTab: {
-    paddingHorizontal: 14,
-    paddingVertical: 6,
-    borderRadius: 16,
+  stickerSearchInput: {
+    flex: 1,
+    fontSize: 14,
+    fontFamily: 'Nunito_400Regular',
+    color: Colors.text,
+    marginLeft: 8,
+    paddingVertical: 2,
   },
-  stickerCategoryTabActive: {
-    backgroundColor: Colors.blush,
+  stickerEmptyState: {
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingVertical: 40,
   },
-  stickerCategoryLabel: {
+  stickerEmptyText: {
     fontSize: 13,
-    fontFamily: 'Nunito_600SemiBold',
+    fontFamily: 'Nunito_400Regular',
     color: Colors.textTertiary,
-  },
-  stickerCategoryLabelActive: {
-    color: Colors.primary,
   },
   stickerItem: {
     flex: 1,
