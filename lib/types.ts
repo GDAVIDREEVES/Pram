@@ -132,6 +132,14 @@ export interface Badge {
   earnedDate?: string;
 }
 
+export interface MeetupAttachment {
+  locationId: string;
+  locationName: string;
+  date: string;
+  time: string;
+  note?: string;
+}
+
 export interface Message {
   id: string;
   matchId: string;
@@ -139,4 +147,5 @@ export interface Message {
   content: string;
   timestamp: string;
   read: boolean;
+  meetup?: MeetupAttachment;
 }
