@@ -37,7 +37,7 @@ lib/
   types.ts             - TypeScript interfaces
   mock-data.ts         - Mock data for development
   query-client.ts      - React Query setup
-  baby-emojis.ts       - Baby-themed emoji categories (8 sets)
+  baby-emojis.ts       - Sticker categories & asset mapping (5 categories, 26 stickers)
 constants/
   colors.ts            - App color palette (coral, sage, gold theme)
 ```
@@ -47,7 +47,7 @@ constants/
 2. **Meet** - Check-in & broadcast location to friends, nearby moms, or everyone
 3. **Community Feed** - Posts, check-ins, meetup planning (accessed from Discover)
 4. **Explore** - Kid-friendly locations with check-in system
-5. **Chat** - Messaging between matched moms, with meetup invite attachments (pick location, date, time, note), baby-themed emoji picker (8 categories), and GIF search/send via GIPHY API
+5. **Chat** - Messaging between matched moms, with meetup invite attachments (pick location, date, time, note), custom sticker pack (26 baby/mom-themed stickers in 5 categories), and GIF search/send via GIPHY API
 6. **Profile** - Bio, kids, interests, badges, privacy settings
 
 ## Design
