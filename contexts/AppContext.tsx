@@ -1,6 +1,6 @@
 import React, { createContext, useContext, useState, useEffect, useMemo, ReactNode, useCallback } from 'react';
 import AsyncStorage from '@react-native-async-storage/async-storage';
-import { Mom, Match, Post, Message, CheckIn, Badge, MeetBroadcast, BroadcastAudience, BroadcastResponse } from '@/lib/types';
+import { Mom, Match, Post, Message, MeetupAttachment, CheckIn, Badge, MeetBroadcast, BroadcastAudience, BroadcastResponse } from '@/lib/types';
 import {
   currentUser,
   discoveryMoms,
@@ -25,6 +25,7 @@ interface AppContextValue {
   addComment: (postId: string, content: string) => void;
   messages: Record<string, Message[]>;
   sendMessage: (matchId: string, content: string) => void;
+  sendMeetupMessage: (matchId: string, meetup: MeetupAttachment) => void;
   checkIns: CheckIn[];
   checkIn: (locationId: string) => void;
   broadcasts: MeetBroadcast[];
@@ -209,6 +210,26 @@ export function AppProvider({ children }: { children: ReactNode }) {
     ));
   }, []);
 
+  const sendMeetupMessage = useCallback((matchId: string, meetup: MeetupAttachment) => {
+    const summary = `Meetup at ${meetup.locationName}`;
+    const newMsg: Message = {
+      id: `msg_${Date.now()}`,
+      matchId,
+      senderId: CURRENT_USER_ID,
+      content: summary,
+      timestamp: new Date().toISOString(),
+      read: true,
+      meetup,
+    };
+    setMessagesMap(prev => ({
+      ...prev,
+      [matchId]: [...(prev[matchId] || []), newMsg],
+    }));
+    setMatches(prev => prev.map(m =>
+      m.id === matchId ? { ...m, lastMessage: summary, unread: 0 } : m
+    ));
+  }, []);
+
   const checkIn = useCallback((locationId: string) => {
     const newCheckIn: CheckIn = {
       id: `checkin_${Date.now()}`,
@@ -270,6 +291,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
     addComment,
     messages: messagesMap,
     sendMessage,
+    sendMeetupMessage,
     checkIns,
     checkIn,
     broadcasts,
@@ -280,7 +302,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
     toggleHangNow,
     getMomById,
     isLoading,
-  }), [user, updateUser, discoveryQueue, likeMom, skipMom, matches, posts, addPost, likePost, addComment, messagesMap, sendMessage, checkIns, checkIn, broadcasts, createBroadcast, respondToBroadcast, userBadges, hangNow, toggleHangNow, getMomById, isLoading]);
+  }), [user, updateUser, discoveryQueue, likeMom, skipMom, matches, posts, addPost, likePost, addComment, messagesMap, sendMessage, sendMeetupMessage, checkIns, checkIn, broadcasts, createBroadcast, respondToBroadcast, userBadges, hangNow, toggleHangNow, getMomById, isLoading]);
 
   return (
     <AppContext.Provider value={value}>
