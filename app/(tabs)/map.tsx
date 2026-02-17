@@ -1,6 +1,6 @@
-import React, { useState, useRef } from 'react';
+import React, { useState } from 'react';
 import {
-  View, Text, StyleSheet, ScrollView, Pressable, Platform, TextInput, Dimensions,
+  View, Text, StyleSheet, ScrollView, Pressable, Platform, TextInput,
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
@@ -8,16 +8,9 @@ import * as Haptics from 'expo-haptics';
 import Colors from '@/constants/colors';
 import { useApp } from '@/contexts/AppContext';
 import LocationCard from '@/components/LocationCard';
+import NativeMapViewComponent from '@/components/NativeMapView';
 import { locations } from '@/lib/mock-data';
-
-const { width: SCREEN_WIDTH, height: SCREEN_HEIGHT } = Dimensions.get('window');
-
-const BROOKLYN_CENTER = {
-  latitude: 40.6782,
-  longitude: -73.9442,
-  latitudeDelta: 0.06,
-  longitudeDelta: 0.06,
-};
+import { Location } from '@/lib/types';
 
 const TYPE_FILTERS = [
   { key: 'all', label: 'All', icon: 'grid' },
@@ -44,23 +37,22 @@ const TYPE_COLORS: Record<string, string> = {
   library: '#5B9BD5',
 };
 
-function MapPin({ location, onPress, isSelected }: { location: typeof locations[0]; onPress: () => void; isSelected: boolean }) {
+function WebMapPin({ location, onPress, isSelected }: { location: Location; onPress: () => void; isSelected: boolean }) {
   const color = TYPE_COLORS[location.type] || Colors.primary;
   const iconName = TYPE_ICONS[location.type] || 'location';
 
   return (
-    <Pressable onPress={onPress} style={[mapPinStyles.container, isSelected && mapPinStyles.selected]}>
-      <View style={[mapPinStyles.badge, { backgroundColor: color }]}>
+    <Pressable onPress={onPress} style={[pinStyles.container, isSelected && pinStyles.selected]}>
+      <View style={[pinStyles.badge, { backgroundColor: color }]}>
         <Ionicons name={iconName as any} size={12} color="#fff" />
-        <Text style={mapPinStyles.rating}>{location.rating}</Text>
+        <Text style={pinStyles.rating}>{location.rating}</Text>
       </View>
-      <Text style={mapPinStyles.name} numberOfLines={1}>{location.name}</Text>
-      <View style={[mapPinStyles.arrow, { borderTopColor: isSelected ? Colors.primary : Colors.white }]} />
+      <Text style={pinStyles.name} numberOfLines={1}>{location.name}</Text>
     </Pressable>
   );
 }
 
-const mapPinStyles = StyleSheet.create({
+const pinStyles = StyleSheet.create({
   container: {
     alignItems: 'center',
     backgroundColor: Colors.white,
@@ -97,22 +89,10 @@ const mapPinStyles = StyleSheet.create({
     fontFamily: 'Nunito_600SemiBold',
     color: Colors.text,
   },
-  arrow: {
-    width: 0,
-    height: 0,
-    borderLeftWidth: 6,
-    borderRightWidth: 6,
-    borderTopWidth: 6,
-    borderLeftColor: 'transparent',
-    borderRightColor: 'transparent',
-    borderTopColor: Colors.white,
-    position: 'absolute',
-    bottom: -6,
-  },
 });
 
 function WebMapView({ filteredLocations, selectedLocation, onSelectLocation }: {
-  filteredLocations: typeof locations;
+  filteredLocations: Location[];
   selectedLocation: string | null;
   onSelectLocation: (id: string) => void;
 }) {
@@ -130,7 +110,7 @@ function WebMapView({ filteredLocations, selectedLocation, onSelectLocation }: {
               key={loc.id}
               style={[webMapStyles.pinWrapper, { top: `${top}%` as any, left: `${left}%` as any }]}
             >
-              <MapPin
+              <WebMapPin
                 location={loc}
                 onPress={() => onSelectLocation(loc.id)}
                 isSelected={selectedLocation === loc.id}
@@ -148,8 +128,12 @@ function WebMapView({ filteredLocations, selectedLocation, onSelectLocation }: {
         ))}
       </View>
       <View style={webMapStyles.centerDot}>
-        <View style={webMapStyles.centerDotInner} />
         <View style={webMapStyles.centerDotPulse} />
+        <View style={webMapStyles.centerDotInner} />
+      </View>
+      <View style={webMapStyles.label}>
+        <Ionicons name="location" size={14} color={Colors.primary} />
+        <Text style={webMapStyles.labelText}>Brooklyn, NY</Text>
       </View>
     </View>
   );
@@ -194,6 +178,8 @@ const webMapStyles = StyleSheet.create({
     left: '50%',
     transform: [{ translateX: -8 }, { translateY: -8 }],
     zIndex: 5,
+    alignItems: 'center',
+    justifyContent: 'center',
   },
   centerDotInner: {
     width: 16,
@@ -209,57 +195,25 @@ const webMapStyles = StyleSheet.create({
     height: 32,
     borderRadius: 16,
     backgroundColor: Colors.primary + '20',
-    top: -8,
-    left: -8,
+  },
+  label: {
+    position: 'absolute',
+    bottom: 100,
+    left: 16,
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
+    backgroundColor: Colors.white + 'CC',
+    paddingHorizontal: 10,
+    paddingVertical: 6,
+    borderRadius: 12,
+  },
+  labelText: {
+    fontSize: 12,
+    fontFamily: 'Nunito_600SemiBold',
+    color: Colors.text,
   },
 });
-
-let MapView: any = null;
-let Marker: any = null;
-let Callout: any = null;
-
-if (Platform.OS !== 'web') {
-  const Maps = require('react-native-maps');
-  MapView = Maps.default;
-  Marker = Maps.Marker;
-  Callout = Maps.Callout;
-}
-
-function NativeMapView({ filteredLocations, selectedLocation, onSelectLocation, onCheckIn, checkedInLocations }: {
-  filteredLocations: typeof locations;
-  selectedLocation: string | null;
-  onSelectLocation: (id: string) => void;
-  onCheckIn: (id: string) => void;
-  checkedInLocations: Set<string>;
-}) {
-  if (!MapView) return null;
-
-  return (
-    <MapView
-      style={StyleSheet.absoluteFillObject}
-      initialRegion={BROOKLYN_CENTER}
-      showsUserLocation
-      showsMyLocationButton={false}
-    >
-      {filteredLocations.map(loc => (
-        <Marker
-          key={loc.id}
-          coordinate={{ latitude: loc.latitude, longitude: loc.longitude }}
-          onPress={() => {
-            Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
-            onSelectLocation(loc.id);
-          }}
-        >
-          <MapPin
-            location={loc}
-            onPress={() => onSelectLocation(loc.id)}
-            isSelected={selectedLocation === loc.id}
-          />
-        </Marker>
-      ))}
-    </MapView>
-  );
-}
 
 export default function ExploreScreen() {
   const insets = useSafeAreaInsets();
@@ -291,6 +245,52 @@ export default function ExploreScreen() {
 
   const selectedLoc = selectedLocation ? locations.find(l => l.id === selectedLocation) : null;
 
+  const renderSearchAndFilters = () => (
+    <>
+      <View style={styles.searchBox}>
+        <Ionicons name="search" size={18} color={Colors.textTertiary} />
+        <TextInput
+          style={styles.searchInput}
+          placeholder="Find a place"
+          placeholderTextColor={Colors.textTertiary}
+          value={searchQuery}
+          onChangeText={setSearchQuery}
+        />
+        {searchQuery.length > 0 && (
+          <Pressable onPress={() => setSearchQuery('')}>
+            <Ionicons name="close-circle" size={18} color={Colors.textTertiary} />
+          </Pressable>
+        )}
+      </View>
+
+      <ScrollView
+        horizontal
+        showsHorizontalScrollIndicator={false}
+        contentContainerStyle={styles.filterRow}
+      >
+        {TYPE_FILTERS.map(f => (
+          <Pressable
+            key={f.key}
+            onPress={() => {
+              Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+              setFilter(f.key);
+            }}
+            style={[styles.filterChip, filter === f.key && styles.filterChipActive]}
+          >
+            <Ionicons
+              name={f.icon as any}
+              size={14}
+              color={filter === f.key ? Colors.white : Colors.text}
+            />
+            <Text style={[styles.filterText, filter === f.key && styles.filterTextActive]}>
+              {f.label}
+            </Text>
+          </Pressable>
+        ))}
+      </ScrollView>
+    </>
+  );
+
   return (
     <View style={styles.container}>
       {viewMode === 'map' ? (
@@ -302,57 +302,18 @@ export default function ExploreScreen() {
               onSelectLocation={setSelectedLocation}
             />
           ) : (
-            <NativeMapView
+            <NativeMapViewComponent
               filteredLocations={filteredLocations}
               selectedLocation={selectedLocation}
-              onSelectLocation={setSelectedLocation}
-              onCheckIn={handleCheckIn}
-              checkedInLocations={checkedInLocations}
+              onSelectLocation={(id: string) => {
+                Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+                setSelectedLocation(id);
+              }}
             />
           )}
 
           <View style={[styles.searchOverlay, { paddingTop: insets.top + webTopInset + 8 }]}>
-            <View style={styles.searchBox}>
-              <Ionicons name="search" size={18} color={Colors.textTertiary} />
-              <TextInput
-                style={styles.searchInput}
-                placeholder="Find a place"
-                placeholderTextColor={Colors.textTertiary}
-                value={searchQuery}
-                onChangeText={setSearchQuery}
-              />
-              {searchQuery.length > 0 && (
-                <Pressable onPress={() => setSearchQuery('')}>
-                  <Ionicons name="close-circle" size={18} color={Colors.textTertiary} />
-                </Pressable>
-              )}
-            </View>
-
-            <ScrollView
-              horizontal
-              showsHorizontalScrollIndicator={false}
-              contentContainerStyle={styles.filterRow}
-            >
-              {TYPE_FILTERS.map(f => (
-                <Pressable
-                  key={f.key}
-                  onPress={() => {
-                    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
-                    setFilter(f.key);
-                  }}
-                  style={[styles.filterChip, filter === f.key && styles.filterChipActive]}
-                >
-                  <Ionicons
-                    name={f.icon as any}
-                    size={14}
-                    color={filter === f.key ? Colors.white : Colors.text}
-                  />
-                  <Text style={[styles.filterText, filter === f.key && styles.filterTextActive]}>
-                    {f.label}
-                  </Text>
-                </Pressable>
-              ))}
-            </ScrollView>
+            {renderSearchAndFilters()}
           </View>
 
           {selectedLoc && (
@@ -373,47 +334,7 @@ export default function ExploreScreen() {
       ) : (
         <View style={styles.listContainer}>
           <View style={[styles.listHeader, { paddingTop: insets.top + webTopInset + 8 }]}>
-            <View style={styles.searchBox}>
-              <Ionicons name="search" size={18} color={Colors.textTertiary} />
-              <TextInput
-                style={styles.searchInput}
-                placeholder="Find a place"
-                placeholderTextColor={Colors.textTertiary}
-                value={searchQuery}
-                onChangeText={setSearchQuery}
-              />
-              {searchQuery.length > 0 && (
-                <Pressable onPress={() => setSearchQuery('')}>
-                  <Ionicons name="close-circle" size={18} color={Colors.textTertiary} />
-                </Pressable>
-              )}
-            </View>
-
-            <ScrollView
-              horizontal
-              showsHorizontalScrollIndicator={false}
-              contentContainerStyle={styles.filterRow}
-            >
-              {TYPE_FILTERS.map(f => (
-                <Pressable
-                  key={f.key}
-                  onPress={() => {
-                    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
-                    setFilter(f.key);
-                  }}
-                  style={[styles.filterChip, filter === f.key && styles.filterChipActive]}
-                >
-                  <Ionicons
-                    name={f.icon as any}
-                    size={14}
-                    color={filter === f.key ? Colors.white : Colors.text}
-                  />
-                  <Text style={[styles.filterText, filter === f.key && styles.filterTextActive]}>
-                    {f.label}
-                  </Text>
-                </Pressable>
-              ))}
-            </ScrollView>
+            {renderSearchAndFilters()}
           </View>
 
           <ScrollView
@@ -452,6 +373,7 @@ export default function ExploreScreen() {
         <Pressable
           onPress={handleToggleView}
           style={({ pressed }) => [styles.toggleButton, pressed && { transform: [{ scale: 0.95 }] }]}
+          testID="view-toggle"
         >
           <Ionicons
             name={viewMode === 'map' ? 'list' : 'map'}
