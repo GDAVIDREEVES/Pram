@@ -38,6 +38,11 @@ function SwipeCard({ mom, onSwipeLeft, onSwipeRight, isFirst }: {
     }
   }, [onSwipeLeft, onSwipeRight]);
 
+  const handleViewProfile = useCallback(() => {
+    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+    router.push({ pathname: '/mom-detail', params: { momId: mom.id } });
+  }, [mom.id]);
+
   const panResponder = useRef(
     PanResponder.create({
       onStartShouldSetPanResponder: () => isFirst,
@@ -50,6 +55,10 @@ function SwipeCard({ mom, onSwipeLeft, onSwipeRight, isFirst }: {
         rotation.value = gestureState.dx * 0.05;
       },
       onPanResponderRelease: (_, gestureState) => {
+        if (Math.abs(gestureState.dx) < 5 && Math.abs(gestureState.dy) < 5) {
+          runOnJS(handleViewProfile)();
+          return;
+        }
         if (gestureState.dx > SWIPE_THRESHOLD) {
           translateX.value = withTiming(SCREEN_WIDTH + 100, { duration: 300 });
           rotation.value = withTiming(15, { duration: 300 });
@@ -124,10 +133,18 @@ function SwipeCard({ mom, onSwipeLeft, onSwipeRight, isFirst }: {
         )}
 
         <View style={styles.interests}>
-          {mom.interests.slice(0, 4).map((interest: string) => (
-            <InterestTag key={interest} label={interest} />
+          {(mom.vibeTags || mom.interests).slice(0, 4).map((tag: string) => (
+            <InterestTag key={tag} label={tag} />
           ))}
         </View>
+
+        <Pressable
+          onPress={handleViewProfile}
+          style={styles.viewProfileLink}
+        >
+          <Text style={styles.viewProfileText}>View Full Profile</Text>
+          <Ionicons name="chevron-forward" size={14} color={Colors.primary} />
+        </Pressable>
       </View>
 
       <Animated.View style={[styles.likeStamp, likeOpacity]}>
@@ -407,6 +424,21 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     flexWrap: 'wrap',
     gap: 8,
+  },
+  viewProfileLink: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 4,
+    marginTop: 14,
+    paddingVertical: 10,
+    borderTopWidth: 1,
+    borderTopColor: Colors.borderLight,
+  },
+  viewProfileText: {
+    fontSize: 14,
+    fontFamily: 'Nunito_600SemiBold',
+    color: Colors.primary,
   },
   likeStamp: {
     position: 'absolute',
