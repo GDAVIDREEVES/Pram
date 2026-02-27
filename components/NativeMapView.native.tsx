@@ -19,6 +19,7 @@ const TYPE_ICONS: Record<string, string> = {
   playground: 'happy',
   restaurant: 'restaurant',
   library: 'book',
+  class: 'school',
 };
 
 const TYPE_COLORS: Record<string, string> = {
@@ -27,6 +28,7 @@ const TYPE_COLORS: Record<string, string> = {
   playground: '#F5C469',
   restaurant: '#E8836B',
   library: '#5B9BD5',
+  class: '#C084FC',
 };
 
 function MapPinNative({ location, isSelected }: { location: Location; isSelected: boolean }) {

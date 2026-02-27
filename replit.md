@@ -1,4 +1,4 @@
-# MomConnect Brooklyn
+# Wriggle
 
 ## Overview
 A hyper-local social networking app for moms with young children in Brooklyn. Built with Expo (React Native) and Express backend.

@@ -11,6 +11,7 @@ import { useApp } from '@/contexts/AppContext';
 import { locations } from '@/lib/mock-data';
 import Avatar from '@/components/Avatar';
 import { BroadcastAudience, Location, MeetBroadcast } from '@/lib/types';
+import { useClasses } from '@/lib/use-classes';
 
 const AUDIENCE_OPTIONS: { key: BroadcastAudience; label: string; icon: string; desc: string }[] = [
   { key: 'friends', label: 'Friends', icon: 'people', desc: 'Only moms you\'re connected with' },
@@ -245,6 +246,7 @@ const cardStyles = StyleSheet.create({
 export default function MeetScreen() {
   const insets = useSafeAreaInsets();
   const { broadcasts, createBroadcast, getMomById, matches } = useApp();
+  const { classes } = useClasses();
   const [showCheckIn, setShowCheckIn] = useState(false);
   const [selectedLocation, setSelectedLocation] = useState<Location | null>(null);
   const [broadcastMessage, setBroadcastMessage] = useState('');
@@ -258,8 +260,23 @@ export default function MeetScreen() {
     (a, b) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime()
   );
 
-  const filteredLocations = locations.filter(loc =>
-    !searchQuery || loc.name.toLowerCase().includes(searchQuery.toLowerCase())
+  const allPlaces = React.useMemo(() => {
+    const seen = new Set(locations.map(l => l.id));
+    const merged = [...locations];
+    for (const cls of classes) {
+      if (!seen.has(cls.id)) {
+        merged.push(cls);
+        seen.add(cls.id);
+      }
+    }
+    return merged;
+  }, [classes]);
+
+  const filteredSpots = allPlaces.filter(loc =>
+    loc.type !== 'class' && (!searchQuery || loc.name.toLowerCase().includes(searchQuery.toLowerCase()))
+  );
+  const filteredClasses = allPlaces.filter(loc =>
+    loc.type === 'class' && (!searchQuery || loc.name.toLowerCase().includes(searchQuery.toLowerCase()))
   );
 
   const handleSelectLocation = (location: Location) => {
@@ -393,7 +410,7 @@ export default function MeetScreen() {
               </View>
 
               <Text style={styles.locationSectionTitle}>Popular Spots Nearby</Text>
-              {filteredLocations.map(location => (
+              {filteredSpots.map(location => (
                 <Pressable
                   key={location.id}
                   onPress={() => handleSelectLocation(location)}
@@ -422,6 +439,34 @@ export default function MeetScreen() {
                   <Ionicons name="chevron-forward" size={18} color={Colors.textTertiary} />
                 </Pressable>
               ))}
+
+              {filteredClasses.length > 0 && (
+                <>
+                  <Text style={styles.locationSectionTitle}>Baby Classes</Text>
+                  {filteredClasses.map(location => (
+                    <Pressable
+                      key={location.id}
+                      onPress={() => handleSelectLocation(location)}
+                      style={({ pressed }) => [
+                        styles.locationItem,
+                        pressed && { opacity: 0.7, transform: [{ scale: 0.98 }] },
+                      ]}
+                    >
+                      <View style={[styles.locationIcon, { backgroundColor: '#C084FC' + '20' }]}>
+                        <Ionicons name="school" size={20} color="#C084FC" />
+                      </View>
+                      <View style={styles.locationInfo}>
+                        <Text style={styles.locationName}>{location.name}</Text>
+                        <Text style={styles.locationAddress}>
+                          {location.classInfo?.venue ?? location.address}
+                          {location.classInfo?.daysOfWeek?.length ? ` · ${location.classInfo.daysOfWeek.join(', ')}` : ''}
+                        </Text>
+                      </View>
+                      <Ionicons name="chevron-forward" size={18} color={Colors.textTertiary} />
+                    </Pressable>
+                  ))}
+                </>
+              )}
             </ScrollView>
           ) : (
             <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={styles.modalScrollContent}>

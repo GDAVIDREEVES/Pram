@@ -1,5 +1,29 @@
 import type { Express } from "express";
 import { createServer, type Server } from "node:http";
+import { scrapeWriggleClasses } from "./scraper";
+
+interface ClassCache {
+  classes: unknown[];
+  lastFetchedAt: number;
+}
+
+let classCache: ClassCache | null = null;
+const SIX_HOURS_MS = 6 * 60 * 60 * 1000;
+
+async function getClasses(): Promise<unknown[]> {
+  const now = Date.now();
+  if (classCache && (now - classCache.lastFetchedAt) < SIX_HOURS_MS) {
+    return classCache.classes;
+  }
+  try {
+    const classes = await scrapeWriggleClasses();
+    classCache = { classes, lastFetchedAt: now };
+    return classes;
+  } catch (err) {
+    console.error("[classes] Scrape failed:", err);
+    return classCache?.classes ?? [];
+  }
+}
 
 export async function registerRoutes(app: Express): Promise<Server> {
   app.get("/api/gifs/search", async (req, res) => {
@@ -54,6 +78,28 @@ export async function registerRoutes(app: Express): Promise<Server> {
     } catch (err) {
       console.error("GIPHY trending error:", err);
       res.status(500).json({ error: "Failed to get trending GIFs" });
+    }
+  });
+
+  // Classes endpoints
+  app.get("/api/classes", async (_req, res) => {
+    try {
+      const classes = await getClasses();
+      res.json({ classes, count: classes.length, cachedAt: classCache?.lastFetchedAt });
+    } catch (err) {
+      console.error("Classes fetch error:", err);
+      res.status(500).json({ error: "Failed to fetch classes" });
+    }
+  });
+
+  app.post("/api/classes/sync", async (_req, res) => {
+    try {
+      classCache = null; // Force re-scrape
+      const classes = await getClasses();
+      res.json({ classes, count: classes.length, syncedAt: classCache?.lastFetchedAt });
+    } catch (err) {
+      console.error("Classes sync error:", err);
+      res.status(500).json({ error: "Failed to sync classes" });
     }
   });
 
