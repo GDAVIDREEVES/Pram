@@ -1,11 +1,11 @@
 {
   "expo": {
-    "name": "MomConnect",
-    "slug": "momconnect",
+    "name": "Wriggle",
+    "slug": "wriggle",
     "version": "1.0.0",
     "orientation": "portrait",
     "icon": "./assets/images/icon.png",
-    "scheme": "myapp",
+    "scheme": "wriggle",
     "userInterfaceStyle": "automatic",
     "newArchEnabled": true,
     "splash": {
@@ -15,10 +15,10 @@
     },
     "ios": {
       "supportsTablet": false,
-      "bundleIdentifier": "com.myapp"
+      "bundleIdentifier": "com.wriggle"
     },
     "android": {
-      "package": "com.myapp",
+      "package": "com.wriggle",
       "adaptiveIcon": {
         "backgroundColor": "#E6F4FE",
         "foregroundImage": "./assets/images/android-icon-foreground.png",

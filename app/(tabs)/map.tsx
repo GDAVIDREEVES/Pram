@@ -11,6 +11,7 @@ import LocationCard from '@/components/LocationCard';
 import NativeMapViewComponent from '@/components/NativeMapView';
 import { locations } from '@/lib/mock-data';
 import { Location } from '@/lib/types';
+import { useClasses } from '@/lib/use-classes';
 
 const TYPE_FILTERS = [
   { key: 'all', label: 'All', icon: 'grid' },
@@ -19,6 +20,7 @@ const TYPE_FILTERS = [
   { key: 'playground', label: 'Play', icon: 'happy' },
   { key: 'restaurant', label: 'Eats', icon: 'restaurant' },
   { key: 'library', label: 'Library', icon: 'book' },
+  { key: 'class', label: 'Classes', icon: 'school' },
 ];
 
 const TYPE_ICONS: Record<string, string> = {
@@ -27,6 +29,7 @@ const TYPE_ICONS: Record<string, string> = {
   playground: 'happy',
   restaurant: 'restaurant',
   library: 'book',
+  class: 'school',
 };
 
 const TYPE_COLORS: Record<string, string> = {
@@ -35,6 +38,7 @@ const TYPE_COLORS: Record<string, string> = {
   playground: '#F5C469',
   restaurant: '#E8836B',
   library: '#5B9BD5',
+  class: '#C084FC',
 };
 
 function WebMapPin({ location, onPress, isSelected }: { location: Location; onPress: () => void; isSelected: boolean }) {
@@ -218,6 +222,7 @@ const webMapStyles = StyleSheet.create({
 export default function ExploreScreen() {
   const insets = useSafeAreaInsets();
   const { checkIn } = useApp();
+  const { classes } = useClasses();
   const [filter, setFilter] = useState('all');
   const [searchQuery, setSearchQuery] = useState('');
   const [viewMode, setViewMode] = useState<'map' | 'list'>('map');
@@ -226,7 +231,20 @@ export default function ExploreScreen() {
 
   const webTopInset = Platform.OS === 'web' ? 67 : 0;
 
-  const filteredLocations = locations.filter(loc => {
+  // Merge locations with server classes (dedup by id)
+  const allLocations = React.useMemo(() => {
+    const seen = new Set(locations.map(l => l.id));
+    const merged = [...locations];
+    for (const cls of classes) {
+      if (!seen.has(cls.id)) {
+        merged.push(cls);
+        seen.add(cls.id);
+      }
+    }
+    return merged;
+  }, [classes]);
+
+  const filteredLocations = allLocations.filter(loc => {
     const matchesFilter = filter === 'all' || loc.type === filter;
     const matchesSearch = !searchQuery || loc.name.toLowerCase().includes(searchQuery.toLowerCase());
     return matchesFilter && matchesSearch;
@@ -243,7 +261,7 @@ export default function ExploreScreen() {
     setViewMode(prev => prev === 'map' ? 'list' : 'map');
   };
 
-  const selectedLoc = selectedLocation ? locations.find(l => l.id === selectedLocation) : null;
+  const selectedLoc = selectedLocation ? allLocations.find(l => l.id === selectedLocation) : null;
 
   const renderSearchAndFilters = () => (
     <>

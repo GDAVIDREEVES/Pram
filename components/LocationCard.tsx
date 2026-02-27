@@ -19,6 +19,7 @@ const TYPE_ICONS: Record<string, string> = {
   playground: 'happy',
   restaurant: 'restaurant',
   library: 'book',
+  class: 'school',
 };
 
 const TYPE_COLORS: Record<string, string> = {
@@ -27,6 +28,7 @@ const TYPE_COLORS: Record<string, string> = {
   playground: '#F5C469',
   restaurant: '#E8836B',
   library: '#5B9BD5',
+  class: '#C084FC',
 };
 
 export default function LocationCard({ location, onCheckIn, checkedIn, fontFamily, fontFamilyBold }: LocationCardProps) {
@@ -57,18 +59,38 @@ export default function LocationCard({ location, onCheckIn, checkedIn, fontFamil
         </View>
       </View>
 
-      <View style={styles.amenities}>
-        {location.amenities.slice(0, 3).map((amenity, i) => (
-          <View key={i} style={styles.amenityTag}>
-            <Text style={[styles.amenityText, fontFamily && { fontFamily }]}>{amenity}</Text>
+      {location.classInfo ? (
+        <View style={styles.amenities}>
+          <View style={[styles.amenityTag, { backgroundColor: '#C084FC' + '15' }]}>
+            <Text style={[styles.amenityText, fontFamily && { fontFamily }, { color: '#C084FC' }]}>
+              {location.classInfo.venue}
+            </Text>
           </View>
-        ))}
-        {location.amenities.length > 3 && (
-          <View style={styles.amenityTag}>
-            <Text style={[styles.amenityText, fontFamily && { fontFamily }]}>+{location.amenities.length - 3}</Text>
+          {location.classInfo.daysOfWeek.slice(0, 3).map((day, i) => (
+            <View key={i} style={styles.amenityTag}>
+              <Text style={[styles.amenityText, fontFamily && { fontFamily }]}>{day}</Text>
+            </View>
+          ))}
+          <View style={[styles.amenityTag, { backgroundColor: Colors.accentLight + '30' }]}>
+            <Text style={[styles.amenityText, fontFamily && { fontFamily }, { color: Colors.accent }]}>
+              {location.classInfo.ageRange}
+            </Text>
           </View>
-        )}
-      </View>
+        </View>
+      ) : (
+        <View style={styles.amenities}>
+          {location.amenities.slice(0, 3).map((amenity, i) => (
+            <View key={i} style={styles.amenityTag}>
+              <Text style={[styles.amenityText, fontFamily && { fontFamily }]}>{amenity}</Text>
+            </View>
+          ))}
+          {location.amenities.length > 3 && (
+            <View style={styles.amenityTag}>
+              <Text style={[styles.amenityText, fontFamily && { fontFamily }]}>+{location.amenities.length - 3}</Text>
+            </View>
+          )}
+        </View>
+      )}
 
       <Pressable
         onPress={handleCheckIn}

@@ -4,7 +4,7 @@
 
 ### Overview
 
-MomConnect Brooklyn is a React Native (Expo SDK 54) social networking app for moms, with an Express 5 backend. It is a single-product monorepo. The app uses mock data and in-memory storage at runtime — no database is required.
+Wriggle is a React Native (Expo SDK 54) social networking app for moms, with an Express 5 backend. It is a single-product monorepo. The app uses mock data and in-memory storage at runtime — no database is required.
 
 ### Running the app
 

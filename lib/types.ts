@@ -83,10 +83,38 @@ export interface Comment {
   timestamp: string;
 }
 
+export type ClassCategory =
+  | 'music'
+  | 'movement'
+  | 'art'
+  | 'language'
+  | 'yoga'
+  | 'open-play'
+  | 'puppetry'
+  | 'storytime'
+  | 'stem'
+  | 'sports'
+  | 'sensory'
+  | 'wellness'
+  | 'other';
+
+export interface ClassInfo {
+  provider: string;
+  venue: string;
+  category: ClassCategory;
+  ageRange: string;
+  ageMinMonths: number;
+  ageMaxMonths: number;
+  daysOfWeek: string[];
+  description: string;
+  sourceUrl: string;
+  lastSyncedAt: string;
+}
+
 export interface Location {
   id: string;
   name: string;
-  type: 'cafe' | 'park' | 'playground' | 'restaurant' | 'library';
+  type: 'cafe' | 'park' | 'playground' | 'restaurant' | 'library' | 'class';
   address: string;
   latitude: number;
   longitude: number;
@@ -94,6 +122,7 @@ export interface Location {
   checkins: number;
   kidFriendly: boolean;
   amenities: string[];
+  classInfo?: ClassInfo;
 }
 
 export type BroadcastAudience = 'friends' | 'nearby' | 'everyone';

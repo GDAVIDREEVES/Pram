@@ -43,14 +43,14 @@ interface AppContextValue {
 const AppContext = createContext<AppContextValue | null>(null);
 
 const STORAGE_KEYS = {
-  matches: 'momconnect_matches',
-  posts: 'momconnect_posts',
-  messages: 'momconnect_messages',
-  checkIns: 'momconnect_checkins',
-  liked: 'momconnect_liked',
-  skipped: 'momconnect_skipped',
-  user: 'momconnect_user',
-  hangNow: 'momconnect_hangnow',
+  matches: 'wriggle_matches',
+  posts: 'wriggle_posts',
+  messages: 'wriggle_messages',
+  checkIns: 'wriggle_checkins',
+  liked: 'wriggle_liked',
+  skipped: 'wriggle_skipped',
+  user: 'wriggle_user',
+  hangNow: 'wriggle_hangnow',
 };
 
 export function AppProvider({ children }: { children: ReactNode }) {
