@@ -7,6 +7,7 @@ import { Ionicons } from '@expo/vector-icons';
 import * as Haptics from 'expo-haptics';
 import Colors from '@/constants/colors';
 import { useApp } from '@/contexts/AppContext';
+import { useAuth } from '@/contexts/AuthContext';
 import Avatar from '@/components/Avatar';
 import InterestTag from '@/components/InterestTag';
 import { badges as allBadges } from '@/lib/mock-data';
@@ -14,6 +15,7 @@ import { badges as allBadges } from '@/lib/mock-data';
 export default function ProfileScreen() {
   const insets = useSafeAreaInsets();
   const { user, hangNow, toggleHangNow, checkIns, matches } = useApp();
+  const { signOut } = useAuth();
   const [activeSection, setActiveSection] = useState<'about' | 'badges' | 'settings'>('about');
 
   const webTopInset = Platform.OS === 'web' ? 67 : 0;
@@ -168,6 +170,11 @@ export default function ProfileScreen() {
               <SettingRow icon="help-circle" label="Help & Support" />
               <SettingRow icon="flag" label="Report a Problem" />
             </View>
+
+            <Pressable style={styles.signOutButton} onPress={signOut}>
+              <Ionicons name="log-out-outline" size={20} color={Colors.error} />
+              <Text style={styles.signOutText}>Sign Out</Text>
+            </Pressable>
           </View>
         )}
       </ScrollView>
@@ -464,5 +471,21 @@ const styles = StyleSheet.create({
     textTransform: 'uppercase',
     letterSpacing: 0.5,
     marginBottom: 8,
+  },
+  signOutButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 8,
+    paddingVertical: 14,
+    borderWidth: 1.5,
+    borderColor: Colors.error,
+    borderRadius: 14,
+    marginTop: 8,
+  },
+  signOutText: {
+    fontSize: 16,
+    fontFamily: 'Nunito_600SemiBold',
+    color: Colors.error,
   },
 });

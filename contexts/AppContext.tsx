@@ -10,6 +10,7 @@ import {
   badges as initialBadges,
   CURRENT_USER_ID,
 } from '@/lib/mock-data';
+import { useAuth } from '@/contexts/AuthContext';
 import * as Crypto from 'expo-crypto';
 
 interface AppContextValue {
@@ -54,6 +55,7 @@ const STORAGE_KEYS = {
 };
 
 export function AppProvider({ children }: { children: ReactNode }) {
+  const { user: authUser } = useAuth();
   const [user, setUser] = useState<Mom>(currentUser);
   const [matches, setMatches] = useState<Match[]>(initialMatches);
   const [posts, setPosts] = useState<Post[]>(initialPosts);
@@ -69,6 +71,12 @@ export function AppProvider({ children }: { children: ReactNode }) {
   useEffect(() => {
     loadData();
   }, []);
+
+  useEffect(() => {
+    if (authUser?.user_metadata?.name) {
+      setUser(prev => ({ ...prev, name: authUser.user_metadata.name as string }));
+    }
+  }, [authUser]);
 
   useEffect(() => {
     const grouped: Record<string, Message[]> = {};
