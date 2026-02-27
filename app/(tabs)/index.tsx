@@ -1,6 +1,6 @@
 import React, { useState, useRef, useCallback } from 'react';
 import {
-  View, Text, StyleSheet, Dimensions, Pressable, Platform
+  View, Text, StyleSheet, Dimensions, Pressable, Platform, ScrollView,
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
@@ -16,7 +16,8 @@ import Avatar from '@/components/Avatar';
 import InterestTag from '@/components/InterestTag';
 import { router } from 'expo-router';
 
-const { width: SCREEN_WIDTH } = Dimensions.get('window');
+const { width: RAW_WIDTH } = Dimensions.get('window');
+const SCREEN_WIDTH = Math.min(RAW_WIDTH, 430);
 const SWIPE_THRESHOLD = SCREEN_WIDTH * 0.3;
 
 function SwipeCard({ mom, onSwipeLeft, onSwipeRight, isFirst }: {
@@ -98,54 +99,56 @@ function SwipeCard({ mom, onSwipeLeft, onSwipeRight, isFirst }: {
       style={[styles.card, cardStyle, !isFirst && styles.cardBehind]}
       {...(isFirst ? panResponder.panHandlers : {})}
     >
-      <View style={styles.cardContent}>
-        <View style={styles.cardHeader}>
-          <Avatar name={mom.name} size={80} verified={mom.verified} hangNow={mom.hangNow} />
-          <View style={styles.cardHeaderInfo}>
-            <Text style={styles.cardName}>{mom.name}, {mom.age}</Text>
-            <View style={styles.locationRow}>
-              <Ionicons name="location" size={14} color={Colors.primary} />
-              <Text style={styles.cardNeighborhood}>{mom.neighborhood}</Text>
-            </View>
-            {mom.hangNow && (
-              <View style={styles.hangNowBadge}>
-                <View style={styles.hangNowDot} />
-                <Text style={styles.hangNowText}>Available now</Text>
+      <ScrollView style={styles.cardScroll} showsVerticalScrollIndicator={false}>
+        <View style={styles.cardContent}>
+          <View style={styles.cardHeader}>
+            <Avatar name={mom.name} size={80} verified={mom.verified} hangNow={mom.hangNow} />
+            <View style={styles.cardHeaderInfo}>
+              <Text style={styles.cardName}>{mom.name}, {mom.age}</Text>
+              <View style={styles.locationRow}>
+                <Ionicons name="location" size={14} color={Colors.primary} />
+                <Text style={styles.cardNeighborhood}>{mom.neighborhood}</Text>
               </View>
-            )}
+              {mom.hangNow && (
+                <View style={styles.hangNowBadge}>
+                  <View style={styles.hangNowDot} />
+                  <Text style={styles.hangNowText}>Available now</Text>
+                </View>
+              )}
+            </View>
           </View>
-        </View>
 
-        <Text style={styles.cardBio} numberOfLines={3}>{mom.bio}</Text>
+          <Text style={styles.cardBio} numberOfLines={3}>{mom.bio}</Text>
 
-        <View style={styles.kidsRow}>
-          <Ionicons name="people" size={14} color={Colors.textSecondary} />
-          <Text style={styles.kidsText}>
-            {mom.kids.map((k: any) => `${k.name}, ${k.age}`).join(' · ')}
-          </Text>
-        </View>
-
-        {mom.prompts.length > 0 && (
-          <View style={styles.promptCard}>
-            <Text style={styles.promptQuestion}>{mom.prompts[0].question}</Text>
-            <Text style={styles.promptAnswer}>{mom.prompts[0].answer}</Text>
+          <View style={styles.kidsRow}>
+            <Ionicons name="people" size={14} color={Colors.textSecondary} />
+            <Text style={styles.kidsText}>
+              {mom.kids.map((k: any) => `${k.name}, ${k.age}`).join(' · ')}
+            </Text>
           </View>
-        )}
 
-        <View style={styles.interests}>
-          {(mom.vibeTags || mom.interests).slice(0, 4).map((tag: string) => (
-            <InterestTag key={tag} label={tag} />
-          ))}
+          {mom.prompts.length > 0 && (
+            <View style={styles.promptCard}>
+              <Text style={styles.promptQuestion}>{mom.prompts[0].question}</Text>
+              <Text style={styles.promptAnswer}>{mom.prompts[0].answer}</Text>
+            </View>
+          )}
+
+          <View style={styles.interests}>
+            {(mom.vibeTags || mom.interests).slice(0, 4).map((tag: string) => (
+              <InterestTag key={tag} label={tag} />
+            ))}
+          </View>
+
+          <Pressable
+            onPress={handleViewProfile}
+            style={styles.viewProfileLink}
+          >
+            <Text style={styles.viewProfileText}>View Full Profile</Text>
+            <Ionicons name="chevron-forward" size={14} color={Colors.primary} />
+          </Pressable>
         </View>
-
-        <Pressable
-          onPress={handleViewProfile}
-          style={styles.viewProfileLink}
-        >
-          <Text style={styles.viewProfileText}>View Full Profile</Text>
-          <Ionicons name="chevron-forward" size={14} color={Colors.primary} />
-        </Pressable>
-      </View>
+      </ScrollView>
 
       <Animated.View style={[styles.likeStamp, likeOpacity]}>
         <Text style={styles.likeStampText}>LIKE</Text>
@@ -196,7 +199,7 @@ export default function DiscoverScreen() {
   const visibleCards = discoveryQueue.slice(currentIndex, currentIndex + 2);
 
   return (
-    <View style={[styles.container, { paddingTop: insets.top + webTopInset }]}>
+    <View style={[styles.container, { paddingTop: insets.top + webTopInset, paddingBottom: Platform.OS === 'web' ? 84 : 0 }]}>
       <View style={styles.topBar}>
         <View>
           <Text style={styles.title}>Discover</Text>
@@ -320,6 +323,7 @@ const styles = StyleSheet.create({
   card: {
     position: 'absolute',
     width: SCREEN_WIDTH - 32,
+    maxHeight: Platform.OS === 'web' ? 'calc(100% - 10px)' : undefined,
     backgroundColor: Colors.white,
     borderRadius: 24,
     shadowColor: '#000',
@@ -331,6 +335,9 @@ const styles = StyleSheet.create({
   },
   cardBehind: {
     top: 10,
+  },
+  cardScroll: {
+    flex: 1,
   },
   cardContent: {
     padding: 20,
@@ -476,7 +483,7 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     justifyContent: 'center',
     gap: 32,
-    paddingBottom: 100,
+    paddingBottom: Platform.OS === 'web' ? 16 : 100,
     paddingTop: 16,
   },
   actionCircle: {
