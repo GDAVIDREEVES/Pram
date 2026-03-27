@@ -35,7 +35,7 @@ Community post feed with check-ins, meetup announcements, and general posts. Lik
 | Framework | [Expo](https://expo.dev) SDK 54 with [Expo Router](https://docs.expo.dev/router/introduction/) v6 (file-based routing) |
 | Language | TypeScript 5.9 |
 | UI | React Native 0.81 + React 19 |
-| Auth | [Supabase Auth](https://supabase.com/docs/guides/auth) (email/password) |
+| Auth & Profiles | [Supabase](https://supabase.com) (Auth + Postgres with RLS) |
 | Maps | [Mapbox GL JS](https://docs.mapbox.com/mapbox-gl-js/) (web) + [react-native-maps](https://github.com/react-native-maps/react-native-maps) (native) |
 | State | React Context + [AsyncStorage](https://react-native-async-storage.github.io/async-storage/) persistence |
 | Server State | [TanStack React Query](https://tanstack.com/query) v5 |
@@ -82,6 +82,7 @@ Pram/
 │   ├── types.ts                # All TypeScript interfaces
 │   ├── mock-data.ts            # Mock data for development
 │   ├── supabase.ts             # Supabase client (lazy init)
+│   ├── use-profile.ts          # Supabase profile hooks (useMyProfile, useDiscoverProfiles)
 │   ├── use-classes.ts          # Classes data hook (React Query)
 │   ├── query-client.ts         # React Query client config
 │   └── baby-emojis.ts          # Sticker categories and assets
@@ -100,7 +101,8 @@ Pram/
 ├── shared/
 │   └── schema.ts               # Drizzle ORM database schema
 └── scripts/
-    └── build.js                # Static build script
+    ├── build.js                # Static build script
+    └── setup-database.sql      # Supabase table + RLS + trigger setup
 ```
 
 ---
@@ -143,12 +145,26 @@ DATABASE_URL=postgresql://...
 | Variable | Required | Description |
 |----------|----------|-------------|
 | `EXPO_PUBLIC_MAPBOX_TOKEN` | Yes | Mapbox GL JS access token for the Explore map |
-| `EXPO_PUBLIC_SUPABASE_URL` | Yes | Supabase project URL for authentication |
+| `EXPO_PUBLIC_SUPABASE_URL` | Yes | Supabase project URL for authentication and profiles |
 | `EXPO_PUBLIC_SUPABASE_ANON_KEY` | Yes | Supabase anonymous/public API key |
 | `GIPHY_API_KEY` | No | GIPHY API key for GIF search in chat |
 | `DATABASE_URL` | No | PostgreSQL connection string for Drizzle migrations |
 
-> **Note:** The app runs without Supabase credentials — auth screens will display a configuration message. All other features work with mock data.
+> **Note:** The app runs without Supabase credentials — auth screens will display a configuration message. Discover and profile features fall back to mock data.
+
+### Supabase Database Setup
+
+After creating your Supabase project, run the database setup script to create the profiles table, RLS policies, and auto-profile trigger:
+
+1. Open the [Supabase SQL Editor](https://supabase.com/dashboard) for your project
+2. Paste the contents of [`scripts/setup-database.sql`](scripts/setup-database.sql)
+3. Click **Run**
+
+This creates:
+- **`profiles` table** — linked to `auth.users` via foreign key, stores name, neighborhood, bio, kids, interests, prompts, vibe tags, comfort signals, and privacy settings
+- **Row Level Security** — authenticated users can see public profiles and edit their own
+- **Auto-profile trigger** — a profile row is created automatically when a user signs up
+- **Backfill** — existing auth users without profiles get one created
 
 ### Running the App
 
@@ -223,7 +239,8 @@ App Launch
 ### Data Flow
 
 - **AuthContext** — Supabase session/user, sign in/up/out methods
-- **AppContext** — All app data (user profile, discovery queue, matches, posts, messages, broadcasts, check-ins, badges). Persisted to AsyncStorage with `wriggle_*` keys. Initialized from mock data.
+- **Supabase Profiles** — `useMyProfile()` reads/writes the current user's profile; `useDiscoverProfiles()` fetches public profiles for the Discover tab. Falls back to mock data when Supabase is not configured.
+- **AppContext** — App data (discovery queue, matches, posts, messages, broadcasts, check-ins, badges). Persisted to AsyncStorage with `wriggle_*` keys. Initialized from mock data.
 - **React Query** — Server-fetched data (baby classes) with 6-hour cache
 
 ### Platform-Specific Code

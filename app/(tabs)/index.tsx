@@ -1,6 +1,7 @@
-import React, { useState, useRef, useCallback } from 'react';
+import React, { useState, useRef, useCallback, useMemo } from 'react';
 import {
   View, Text, StyleSheet, Dimensions, Pressable, Platform, ScrollView,
+  ActivityIndicator,
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
@@ -12,6 +13,7 @@ import { PanResponder } from 'react-native';
 import * as Haptics from 'expo-haptics';
 import Colors from '@/constants/colors';
 import { useApp } from '@/contexts/AppContext';
+import { useDiscoverProfiles } from '@/lib/use-profile';
 import Avatar from '@/components/Avatar';
 import InterestTag from '@/components/InterestTag';
 import { router } from 'expo-router';
@@ -162,9 +164,16 @@ function SwipeCard({ mom, onSwipeLeft, onSwipeRight, isFirst }: {
 
 export default function DiscoverScreen() {
   const insets = useSafeAreaInsets();
-  const { discoveryQueue, likeMom, skipMom } = useApp();
+  const { discoveryQueue: mockQueue, likeMom, skipMom } = useApp();
   const [currentIndex, setCurrentIndex] = useState(0);
   const [matchAlert, setMatchAlert] = useState<string | null>(null);
+
+  // Try Supabase first, fall back to mock data
+  const { profiles: supabaseProfiles, isLoading: supabaseLoading } = useDiscoverProfiles();
+  const discoveryQueue = useMemo(
+    () => supabaseProfiles.length > 0 ? supabaseProfiles : mockQueue,
+    [supabaseProfiles, mockQueue],
+  );
 
   const webTopInset = Platform.OS === 'web' ? 67 : 0;
 

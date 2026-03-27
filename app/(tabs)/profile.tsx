@@ -8,6 +8,7 @@ import * as Haptics from 'expo-haptics';
 import Colors from '@/constants/colors';
 import { useApp } from '@/contexts/AppContext';
 import { useAuth } from '@/contexts/AuthContext';
+import { useMyProfile } from '@/lib/use-profile';
 import Avatar from '@/components/Avatar';
 import InterestTag from '@/components/InterestTag';
 import { badges as allBadges } from '@/lib/mock-data';
@@ -16,6 +17,7 @@ export default function ProfileScreen() {
   const insets = useSafeAreaInsets();
   const { user, hangNow, toggleHangNow, checkIns, matches } = useApp();
   const { signOut } = useAuth();
+  const { profile, updateProfile } = useMyProfile();
   const [activeSection, setActiveSection] = useState<'about' | 'badges' | 'settings'>('about');
 
   const webTopInset = Platform.OS === 'web' ? 67 : 0;
@@ -152,7 +154,21 @@ export default function ProfileScreen() {
           <View style={styles.section}>
             <View style={styles.settingsGroup}>
               <Text style={styles.settingsGroupTitle}>Privacy</Text>
-              <SettingRow icon="eye-off" label="Hide Profile from Discover" />
+              <View style={settingStyles.row}>
+                <View style={settingStyles.left}>
+                  <Ionicons name="eye" size={20} color={Colors.textSecondary} />
+                  <View>
+                    <Text style={settingStyles.label}>Public Profile</Text>
+                    <Text style={settingStyles.sublabel}>Visible in Discover</Text>
+                  </View>
+                </View>
+                <Switch
+                  value={profile?.is_public ?? true}
+                  onValueChange={(val) => updateProfile({ is_public: val })}
+                  trackColor={{ false: Colors.borderLight, true: Colors.accentLight }}
+                  thumbColor={profile?.is_public ? Colors.accent : Colors.white}
+                />
+              </View>
               <SettingRow icon="location" label="Neighborhood Visibility Only" />
               <SettingRow icon="shield-checkmark" label="Verified Badge" active />
             </View>
@@ -218,6 +234,12 @@ const settingStyles = StyleSheet.create({
     fontSize: 15,
     fontFamily: 'Nunito_500Medium',
     color: Colors.text,
+  },
+  sublabel: {
+    fontSize: 12,
+    fontFamily: 'Nunito_400Regular',
+    color: Colors.textTertiary,
+    marginTop: 1,
   },
 });
 
