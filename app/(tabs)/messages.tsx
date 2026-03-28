@@ -1,8 +1,9 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import {
   View, Text, StyleSheet, FlatList, Pressable, Platform,
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { useFocusEffect } from 'expo-router';
 import * as Haptics from 'expo-haptics';
 import { router } from 'expo-router';
 import Colors from '@/constants/colors';
@@ -28,10 +29,13 @@ function timeAgo(dateStr: string): string {
 export default function MessagesScreen() {
   const insets = useSafeAreaInsets();
   const { messages } = useApp();
-  const { friends, isLoading } = useFriends();
+  const { friends, isLoading, refetch } = useFriends();
   const [lastMessages, setLastMessages] = useState<Record<string, Message>>({});
 
   const webTopInset = Platform.OS === 'web' ? 67 : 0;
+
+  // Re-fetch friends every time the tab comes into focus
+  useFocusEffect(useCallback(() => { refetch(); }, [refetch]));
 
   // Fetch last message for each friendship from Supabase
   useEffect(() => {
@@ -60,13 +64,19 @@ export default function MessagesScreen() {
         <View style={styles.rowInfo}>
           <View style={styles.rowHeader}>
             <Text style={styles.name}>{item.profile.name}</Text>
-            <Text style={styles.time}>{timeAgo(lastMsg?.timestamp ?? item.since)}</Text>
+            {item.isPending ? (
+              <View style={styles.requestBadge}>
+                <Text style={styles.requestBadgeText}>Friend Request</Text>
+              </View>
+            ) : (
+              <Text style={styles.time}>{timeAgo(lastMsg?.timestamp ?? item.since)}</Text>
+            )}
           </View>
           <Text
             style={[styles.preview, !lastMsg && styles.previewPlaceholder]}
             numberOfLines={1}
           >
-            {lastMsg?.content ?? 'Say something...'}
+            {item.isPending ? 'Wants to connect with you' : (lastMsg?.content ?? 'Say something...')}
           </Text>
         </View>
       </Pressable>
@@ -156,6 +166,17 @@ const styles = StyleSheet.create({
   previewPlaceholder: {
     color: Colors.textTertiary,
     fontStyle: 'italic',
+  },
+  requestBadge: {
+    backgroundColor: Colors.primary,
+    borderRadius: 10,
+    paddingHorizontal: 8,
+    paddingVertical: 3,
+  },
+  requestBadgeText: {
+    fontSize: 11,
+    fontFamily: 'Nunito_700Bold',
+    color: Colors.white,
   },
   separator: {
     height: 1,
