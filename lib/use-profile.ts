@@ -171,6 +171,7 @@ export interface Friend {
   friendshipId: string;
   profile: Mom;
   since: string;
+  isPending: boolean; // true = they friended you but you haven't friended them back
 }
 
 /**
@@ -205,10 +206,21 @@ export function useFriends() {
           return;
         }
 
-        // Collect the other person's ID for each friendship
-        const friendIds = rows.map((r: any) =>
-          r.user_id === authUser.id ? r.friend_id : r.user_id
-        );
+        // Rows where I initiated (user_id = me) vs they initiated (friend_id = me)
+        const myInitiated = rows.filter((r: any) => r.user_id === authUser.id);
+        const theyInitiated = rows.filter((r: any) => r.friend_id === authUser.id);
+
+        // IDs I have already friended
+        const myFriendedIds = new Set<string>(myInitiated.map((r: any) => r.friend_id));
+
+        // Pending = they friended me, I haven't friended them back
+        const pendingRows = theyInitiated.filter((r: any) => !myFriendedIds.has(r.user_id));
+
+        // Collect all relevant other-person IDs for a single profile fetch
+        const friendIds = [
+          ...myInitiated.map((r: any) => r.friend_id),
+          ...pendingRows.map((r: any) => r.user_id),
+        ];
 
         // Fetch their profiles in one query
         const { data: profileRows } = await client
@@ -220,18 +232,20 @@ export function useFriends() {
           (profileRows ?? []).map((p: any) => [p.id, p as Profile])
         );
 
-        const result: Friend[] = rows
-          .map((r: any) => {
-            const otherId = r.user_id === authUser.id ? r.friend_id : r.user_id;
-            const profile = profileMap.get(otherId);
+        const result: Friend[] = [
+          // Connections I initiated (not pending)
+          ...myInitiated.map((r: any) => {
+            const profile = profileMap.get(r.friend_id);
             if (!profile) return null;
-            return {
-              friendshipId: r.id,
-              profile: profileToMom(profile),
-              since: r.created_at,
-            };
-          })
-          .filter(Boolean) as Friend[];
+            return { friendshipId: r.id, profile: profileToMom(profile), since: r.created_at, isPending: false };
+          }),
+          // Incoming requests I haven't accepted yet
+          ...pendingRows.map((r: any) => {
+            const profile = profileMap.get(r.user_id);
+            if (!profile) return null;
+            return { friendshipId: r.id, profile: profileToMom(profile), since: r.created_at, isPending: true };
+          }),
+        ].filter(Boolean) as Friend[];
 
         setFriends(result);
         setIsLoading(false);
