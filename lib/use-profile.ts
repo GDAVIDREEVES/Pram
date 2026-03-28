@@ -309,6 +309,48 @@ export function useProfileById(id: string | undefined) {
   return profile;
 }
 
+/** Hook: returns the list of user IDs the current user has blocked. */
+export function useBlockedIds(): string[] {
+  const { user: authUser } = useAuth();
+  const [blockedIds, setBlockedIds] = useState<string[]>([]);
+
+  useEffect(() => {
+    if (!authUser) return;
+    const client = getSupabase();
+    if (!client) return;
+
+    client
+      .from('blocks')
+      .select('blocked_id')
+      .eq('user_id', authUser.id)
+      .then(({ data }) => {
+        if (data) setBlockedIds(data.map((r: any) => r.blocked_id));
+      });
+  }, [authUser?.id]);
+
+  return blockedIds;
+}
+
+/** Block a user. Also removes any existing friendship rows between the two users. */
+export async function blockUser(blockedId: string): Promise<void> {
+  const client = getSupabase();
+  if (!client) return;
+
+  const { data: { user } } = await client.auth.getUser();
+  if (!user) return;
+
+  // Insert block (ignore conflict if already blocked)
+  await client
+    .from('blocks')
+    .upsert({ user_id: user.id, blocked_id: blockedId }, { onConflict: 'user_id,blocked_id' });
+
+  // Remove friendship rows in both directions
+  await client
+    .from('friends')
+    .delete()
+    .or(`and(user_id.eq.${user.id},friend_id.eq.${blockedId}),and(user_id.eq.${blockedId},friend_id.eq.${user.id})`);
+}
+
 export async function addFriend(friendId: string): Promise<string | null> {
   const client = getSupabase();
   if (!client) return null;
@@ -316,11 +358,13 @@ export async function addFriend(friendId: string): Promise<string | null> {
   const { data: { user } } = await client.auth.getUser();
   if (!user) return null;
 
-  // Avoid duplicate friendships
+  // Only check if I have already friended them (not the reverse direction —
+  // the reverse row is what creates the "pending" state we're accepting here)
   const { data: existing } = await client
     .from('friends')
     .select('id')
-    .or(`and(user_id.eq.${user.id},friend_id.eq.${friendId}),and(user_id.eq.${friendId},friend_id.eq.${user.id})`)
+    .eq('user_id', user.id)
+    .eq('friend_id', friendId)
     .maybeSingle();
 
   if (existing) return existing.id;
