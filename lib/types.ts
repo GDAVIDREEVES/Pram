@@ -17,6 +17,7 @@ export interface Mom {
   comfortSignals?: ComfortSignals;
   safety?: SafetyInfo;
   socialProof?: SocialProof;
+  isAdmin?: boolean;
 }
 
 export interface Kid {

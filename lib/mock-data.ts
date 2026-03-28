@@ -49,6 +49,7 @@ export const currentUser: Mom = {
   },
   safety: { phoneVerified: true, referredByMember: true, neighborhoodHost: false },
   socialProof: { mutualConnectionsCount: 5, successfulMeetupsCount: 8, ratingAverage: 4.9 },
+  isAdmin: true,
 };
 
 export const discoveryMoms: Mom[] = [

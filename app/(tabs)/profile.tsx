@@ -20,7 +20,7 @@ export default function ProfileScreen() {
   const { profile, updateProfile } = useMyProfile();
   const [activeSection, setActiveSection] = useState<'about' | 'badges' | 'settings'>('about');
 
-  const webTopInset = Platform.OS === 'web' ? 67 : 0;
+  const webTopInset = Platform.OS === 'web' ? 20 : 0;
 
   const earnedBadges = allBadges.filter(b => b.earned);
   const totalMatches = matches.filter(m => m.matched).length;
@@ -33,7 +33,7 @@ export default function ProfileScreen() {
   return (
     <View style={[styles.container, { paddingTop: insets.top + webTopInset }]}>
       <ScrollView
-        showsVerticalScrollIndicator={false}
+        showsVerticalScrollIndicator={Platform.OS === 'web'}
         contentContainerStyle={styles.scrollContent}
         contentInsetAdjustmentBehavior="automatic"
       >
@@ -277,11 +277,7 @@ const styles = StyleSheet.create({
     borderRadius: 16,
     paddingVertical: 16,
     paddingHorizontal: 12,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 1 },
-    shadowOpacity: 0.04,
-    shadowRadius: 6,
-    elevation: 1,
+    boxShadow: '0px 1px 6px rgba(0, 0, 0, 0.04)',
   },
   statItem: {
     flex: 1,
@@ -315,11 +311,7 @@ const styles = StyleSheet.create({
     borderRadius: 16,
     padding: 16,
     marginTop: 16,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 1 },
-    shadowOpacity: 0.04,
-    shadowRadius: 6,
-    elevation: 1,
+    boxShadow: '0px 1px 6px rgba(0, 0, 0, 0.04)',
   },
   hangNowInfo: {
     flexDirection: 'row',
@@ -445,11 +437,7 @@ const styles = StyleSheet.create({
     borderRadius: 14,
     padding: 14,
     marginBottom: 10,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 1 },
-    shadowOpacity: 0.03,
-    shadowRadius: 4,
-    elevation: 1,
+    boxShadow: '0px 1px 4px rgba(0, 0, 0, 0.03)',
   },
   badgeRowLocked: {
     opacity: 0.5,

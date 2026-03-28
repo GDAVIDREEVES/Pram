@@ -10,10 +10,10 @@ Wriggle is a React Native (Expo SDK 54) social networking app for moms, with an 
 
 Two processes must run concurrently:
 
-1. **Express backend** (port 5000): `npm run server:dev`
-2. **Expo web dev server** (port 8081): `EXPO_PUBLIC_DOMAIN=localhost:5000 npx expo start --web --localhost`
+1. **Express backend** (port 3001): `npm run server:dev`
+2. **Expo web dev server** (port 8081): `EXPO_PUBLIC_DOMAIN=localhost:3001 npx expo start --web --localhost`
 
-Set `EXPO_PUBLIC_DOMAIN=localhost:5000` so the frontend can reach the backend API. The `CI=1` env var can be used instead of `--non-interactive` (which is unsupported by this Expo version).
+Set `EXPO_PUBLIC_DOMAIN=localhost:3001` so the frontend can reach the backend API. The `CI=1` env var can be used instead of `--non-interactive` (which is unsupported by this Expo version).
 
 ### Lint / Test / Build
 

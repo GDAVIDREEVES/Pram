@@ -21,6 +21,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   useEffect(() => {
     const client = getSupabase();
     if (!client) {
+      setSession({
+        user: { id: 'mock-user', email: 'demo@wriggle.app', user_metadata: { name: 'Sarah' } },
+      } as unknown as Session);
       setIsLoading(false);
       return undefined;
     }

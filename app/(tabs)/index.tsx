@@ -1,7 +1,7 @@
 import React, { useState, useRef, useCallback, useMemo } from 'react';
 import {
   View, Text, StyleSheet, Dimensions, Pressable, Platform, ScrollView,
-  ActivityIndicator,
+  ActivityIndicator, Alert,
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
@@ -221,7 +221,10 @@ export default function DiscoverScreen() {
           >
             <Ionicons name="newspaper-outline" size={20} color={Colors.text} />
           </Pressable>
-          <Pressable style={styles.filterButton}>
+          <Pressable
+            onPress={() => Alert.alert('Filters', 'Filter preferences coming soon!')}
+            style={styles.filterButton}
+          >
             <Ionicons name="options" size={22} color={Colors.text} />
           </Pressable>
         </View>
@@ -317,11 +320,7 @@ const styles = StyleSheet.create({
     backgroundColor: Colors.white,
     alignItems: 'center',
     justifyContent: 'center',
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 1 },
-    shadowOpacity: 0.05,
-    shadowRadius: 4,
-    elevation: 2,
+    boxShadow: '0px 1px 4px rgba(0, 0, 0, 0.05)',
   },
   cardStack: {
     flex: 1,
@@ -335,11 +334,7 @@ const styles = StyleSheet.create({
     maxHeight: Platform.OS === 'web' ? 'calc(100% - 10px)' : undefined,
     backgroundColor: Colors.white,
     borderRadius: 24,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.1,
-    shadowRadius: 16,
-    elevation: 8,
+    boxShadow: '0px 4px 16px rgba(0, 0, 0, 0.1)',
     overflow: 'hidden',
   },
   cardBehind: {
@@ -501,11 +496,7 @@ const styles = StyleSheet.create({
     borderRadius: 30,
     alignItems: 'center',
     justifyContent: 'center',
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.1,
-    shadowRadius: 8,
-    elevation: 4,
+    boxShadow: '0px 2px 8px rgba(0, 0, 0, 0.1)',
   },
   skipCircle: {
     backgroundColor: Colors.white,
@@ -542,11 +533,7 @@ const styles = StyleSheet.create({
     padding: 32,
     alignItems: 'center',
     width: SCREEN_WIDTH - 64,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 8 },
-    shadowOpacity: 0.15,
-    shadowRadius: 24,
-    elevation: 12,
+    boxShadow: '0px 8px 24px rgba(0, 0, 0, 0.15)',
   },
   matchTitle: {
     fontSize: 26,
