@@ -257,7 +257,13 @@ export function useFriends() {
         ...myInitiated.map((r: any) => {
           const profile = profileMap.get(r.friend_id);
           if (!profile) return null;
-          return { friendshipId: r.id, profile: profileToMom(profile), since: r.created_at, isPending: false };
+          // Use the earlier row as the canonical friendship ID so both sides
+          // share the same message thread regardless of who friended first.
+          const theirRow = theyInitiated.find((t: any) => t.user_id === r.friend_id);
+          const friendshipId = (theirRow && theirRow.created_at < r.created_at)
+            ? theirRow.id
+            : r.id;
+          return { friendshipId, profile: profileToMom(profile), since: r.created_at, isPending: false };
         }),
         // Incoming requests I haven't accepted yet
         ...pendingRows.map((r: any) => {
