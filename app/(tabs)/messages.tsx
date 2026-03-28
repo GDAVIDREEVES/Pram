@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import {
-  View, Text, StyleSheet, FlatList, Pressable, Platform,
+  View, Text, StyleSheet, FlatList, Pressable, Platform, Modal, ActivityIndicator,
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useFocusEffect } from 'expo-router';
@@ -8,7 +8,7 @@ import * as Haptics from 'expo-haptics';
 import { router } from 'expo-router';
 import Colors from '@/constants/colors';
 import { useApp } from '@/contexts/AppContext';
-import { useFriends, Friend } from '@/lib/use-profile';
+import { useFriends, Friend, useBlockedIds, blockUser, addFriend } from '@/lib/use-profile';
 import { isSupabaseConfigured } from '@/lib/supabase';
 import { fetchLastMessages } from '@/lib/use-messages';
 import Avatar from '@/components/Avatar';
@@ -30,7 +30,10 @@ export default function MessagesScreen() {
   const insets = useSafeAreaInsets();
   const { messages } = useApp();
   const { friends, isLoading, refetch } = useFriends();
+  const blockedIds = useBlockedIds();
   const [lastMessages, setLastMessages] = useState<Record<string, Message>>({});
+  const [pendingModal, setPendingModal] = useState<Friend | null>(null);
+  const [actionLoading, setActionLoading] = useState(false);
 
   const webTopInset = Platform.OS === 'web' ? 67 : 0;
 
@@ -44,9 +47,38 @@ export default function MessagesScreen() {
     fetchLastMessages(ids).then(setLastMessages);
   }, [friends]);
 
+  // Filter out blocked users
+  const visibleFriends = (friends ?? []).filter(f => !blockedIds.includes(f.profile.id));
+
   const handleOpenChat = (friend: Friend) => {
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
     router.push({ pathname: '/chat', params: { matchId: friend.friendshipId, momId: friend.profile.id } });
+  };
+
+  const handleRowPress = (friend: Friend) => {
+    if (friend.isPending) {
+      setPendingModal(friend);
+    } else {
+      handleOpenChat(friend);
+    }
+  };
+
+  const handleAddFriend = async () => {
+    if (!pendingModal) return;
+    setActionLoading(true);
+    await addFriend(pendingModal.profile.id);
+    setActionLoading(false);
+    setPendingModal(null);
+    refetch();
+  };
+
+  const handleBlock = async () => {
+    if (!pendingModal) return;
+    setActionLoading(true);
+    await blockUser(pendingModal.profile.id);
+    setActionLoading(false);
+    setPendingModal(null);
+    refetch();
   };
 
   const renderItem = ({ item }: { item: Friend }) => {
@@ -57,7 +89,7 @@ export default function MessagesScreen() {
 
     return (
       <Pressable
-        onPress={() => handleOpenChat(item)}
+        onPress={() => handleRowPress(item)}
         style={({ pressed }) => [styles.row, pressed && { opacity: 0.7 }]}
       >
         <Avatar name={item.profile.name} size={52} verified={item.profile.verified} hangNow={item.profile.hangNow} />
@@ -90,10 +122,10 @@ export default function MessagesScreen() {
       </View>
 
       <FlatList
-        data={friends ?? []}
+        data={visibleFriends}
         renderItem={renderItem}
         keyExtractor={item => item.friendshipId}
-        contentContainerStyle={[styles.listContent, !friends?.length && styles.listEmpty]}
+        contentContainerStyle={[styles.listContent, !visibleFriends.length && styles.listEmpty]}
         showsVerticalScrollIndicator={false}
         ItemSeparatorComponent={() => <View style={styles.separator} />}
         ListEmptyComponent={
@@ -106,6 +138,50 @@ export default function MessagesScreen() {
           ) : null
         }
       />
+
+      <Modal
+        visible={!!pendingModal}
+        transparent
+        animationType="fade"
+        onRequestClose={() => setPendingModal(null)}
+      >
+        <Pressable style={styles.modalOverlay} onPress={() => setPendingModal(null)}>
+          <View style={styles.modalCard}>
+            <Avatar
+              name={pendingModal?.profile.name ?? ''}
+              size={60}
+              verified={pendingModal?.profile.verified}
+              hangNow={pendingModal?.profile.hangNow}
+            />
+            <Text style={styles.modalName}>{pendingModal?.profile.name}</Text>
+            <Text style={styles.modalSubtitle}>wants to be your friend</Text>
+            {actionLoading ? (
+              <ActivityIndicator color={Colors.primary} style={{ marginTop: 20 }} />
+            ) : (
+              <View style={styles.modalActions}>
+                <Pressable
+                  onPress={handleAddFriend}
+                  style={({ pressed }) => [styles.modalBtn, styles.modalBtnPrimary, pressed && { opacity: 0.8 }]}
+                >
+                  <Text style={styles.modalBtnPrimaryText}>Add Friend</Text>
+                </Pressable>
+                <Pressable
+                  onPress={handleBlock}
+                  style={({ pressed }) => [styles.modalBtn, styles.modalBtnDestructive, pressed && { opacity: 0.8 }]}
+                >
+                  <Text style={styles.modalBtnDestructiveText}>Block</Text>
+                </Pressable>
+                <Pressable
+                  onPress={() => setPendingModal(null)}
+                  style={({ pressed }) => [styles.modalBtn, pressed && { opacity: 0.7 }]}
+                >
+                  <Text style={styles.modalBtnCancelText}>Cancel</Text>
+                </Pressable>
+              </View>
+            )}
+          </View>
+        </Pressable>
+      </Modal>
     </View>
   );
 }
@@ -204,5 +280,62 @@ const styles = StyleSheet.create({
     color: Colors.textSecondary,
     textAlign: 'center',
     paddingHorizontal: 40,
+  },
+  modalOverlay: {
+    flex: 1,
+    backgroundColor: 'rgba(0,0,0,0.5)',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  modalCard: {
+    backgroundColor: Colors.white,
+    borderRadius: 24,
+    padding: 28,
+    width: 320,
+    alignItems: 'center',
+  },
+  modalName: {
+    fontSize: 20,
+    fontFamily: 'Nunito_700Bold',
+    color: Colors.text,
+    marginTop: 14,
+  },
+  modalSubtitle: {
+    fontSize: 14,
+    fontFamily: 'Nunito_400Regular',
+    color: Colors.textSecondary,
+    marginTop: 4,
+    marginBottom: 4,
+  },
+  modalActions: {
+    width: '100%',
+    marginTop: 16,
+    gap: 10,
+  },
+  modalBtn: {
+    borderRadius: 16,
+    paddingVertical: 13,
+    alignItems: 'center',
+  },
+  modalBtnPrimary: {
+    backgroundColor: Colors.primary,
+  },
+  modalBtnPrimaryText: {
+    fontSize: 15,
+    fontFamily: 'Nunito_700Bold',
+    color: Colors.white,
+  },
+  modalBtnDestructive: {
+    backgroundColor: Colors.error + '15',
+  },
+  modalBtnDestructiveText: {
+    fontSize: 15,
+    fontFamily: 'Nunito_600SemiBold',
+    color: Colors.error,
+  },
+  modalBtnCancelText: {
+    fontSize: 15,
+    fontFamily: 'Nunito_400Regular',
+    color: Colors.textSecondary,
   },
 });
