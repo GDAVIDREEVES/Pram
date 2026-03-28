@@ -10,6 +10,7 @@ import * as Haptics from 'expo-haptics';
 import { fetch } from 'expo/fetch';
 import Colors from '@/constants/colors';
 import { useApp } from '@/contexts/AppContext';
+import { useProfileById } from '@/lib/use-profile';
 import Avatar from '@/components/Avatar';
 import { Message, MeetupAttachment } from '@/lib/types';
 import { CURRENT_USER_ID, locations } from '@/lib/mock-data';
@@ -329,7 +330,9 @@ export default function ChatScreen() {
   const webTopInset = Platform.OS === 'web' ? 67 : 0;
   const days = getNextDays(14);
 
-  const mom = getMomById(momId || '');
+  const mockMom = getMomById(momId || '');
+  const supabaseMom = useProfileById(mockMom ? undefined : momId);
+  const mom = mockMom ?? supabaseMom;
   const chatMessages = messages[matchId || ''] || [];
   const sortedMessages = [...chatMessages].sort(
     (a, b) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime()

@@ -245,6 +245,31 @@ export function useFriends() {
  * Insert a row into the `friends` table when the current user likes someone.
  * Returns the new friendship id, or null on error.
  */
+/**
+ * Hook: fetch a single profile by ID from Supabase.
+ * Falls back to null if not found or not configured.
+ */
+export function useProfileById(id: string | undefined) {
+  const [profile, setProfile] = useState<Mom | null>(null);
+
+  useEffect(() => {
+    if (!id) return;
+    const client = getSupabase();
+    if (!client) return;
+
+    client
+      .from('profiles')
+      .select('*')
+      .eq('id', id)
+      .single()
+      .then(({ data }) => {
+        if (data) setProfile(profileToMom(data as Profile));
+      });
+  }, [id]);
+
+  return profile;
+}
+
 export async function addFriend(friendId: string): Promise<string | null> {
   const client = getSupabase();
   if (!client) return null;
