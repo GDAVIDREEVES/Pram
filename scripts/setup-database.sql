@@ -204,3 +204,51 @@ create policy "Users can send messages in their friendships"
         and (f.user_id = auth.uid() or f.friend_id = auth.uid())
     )
   );
+
+-- ============================================================
+-- 8. EVENTS TABLE (scraped baby classes from Wriggle)
+-- ============================================================
+
+create table if not exists public.events (
+  id text primary key,              -- stable slug: wriggle_<name>
+  name text not null,
+  provider text not null default '',
+  venue text not null default '',
+  address text not null default '',
+  latitude double precision not null default 0,
+  longitude double precision not null default 0,
+  rating numeric(3,1) not null default 0,
+  checkins integer not null default 0,
+  categories text[] not null default '{}',
+  days_of_week text[] not null default '{}',
+  age_range text not null default '',
+  age_min_months integer not null default 0,
+  age_max_months integer not null default 0,
+  description text not null default '',
+  source_url text not null default '',
+  source_page text not null default '',
+  last_synced_at timestamptz not null default now()
+);
+
+create index if not exists idx_events_last_synced
+  on public.events (last_synced_at desc);
+
+alter table public.events enable row level security;
+
+-- Public read (class listings are public data)
+create policy "Events are publicly readable"
+  on public.events for select
+  to anon, authenticated
+  using (true);
+
+-- Server (anon key) can upsert events
+create policy "Events can be inserted"
+  on public.events for insert
+  to anon, authenticated
+  with check (true);
+
+create policy "Events can be updated"
+  on public.events for update
+  to anon, authenticated
+  using (true)
+  with check (true);

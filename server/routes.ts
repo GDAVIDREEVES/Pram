@@ -1,6 +1,7 @@
 import type { Express } from "express";
 import { createServer, type Server } from "node:http";
 import { scrapeWriggleClasses } from "./scraper";
+import { queryFreshEvents, upsertEvents, type EventRow } from "./db";
 
 interface ClassCache {
   classes: unknown[];
@@ -10,17 +11,86 @@ interface ClassCache {
 let classCache: ClassCache | null = null;
 const SIX_HOURS_MS = 6 * 60 * 60 * 1000;
 
+function toEventId(name: string): string {
+  return 'wriggle_' + name.toLowerCase().replace(/[^a-z0-9]+/g, '_').replace(/^_|_$/g, '');
+}
+
+function locationToEventRow(loc: any): EventRow {
+  return {
+    id: toEventId(loc.name),
+    name: loc.name,
+    provider: loc.classInfo.provider,
+    venue: loc.classInfo.venue,
+    address: loc.address,
+    latitude: loc.latitude,
+    longitude: loc.longitude,
+    rating: loc.rating,
+    checkins: loc.checkins,
+    categories: loc.amenities ?? [],
+    days_of_week: loc.classInfo.daysOfWeek,
+    age_range: loc.classInfo.ageRange,
+    age_min_months: loc.classInfo.ageMinMonths,
+    age_max_months: loc.classInfo.ageMaxMonths,
+    description: loc.classInfo.description,
+    source_url: loc.classInfo.sourceUrl,
+    source_page: loc.classInfo.sourcePage ?? '',
+    last_synced_at: loc.classInfo.lastSyncedAt,
+  };
+}
+
+function eventRowToLocation(row: EventRow): unknown {
+  return {
+    id: row.id,
+    name: row.name,
+    type: 'class',
+    address: row.address,
+    latitude: row.latitude,
+    longitude: row.longitude,
+    rating: row.rating,
+    checkins: row.checkins,
+    kidFriendly: true,
+    amenities: row.categories,
+    classInfo: {
+      provider: row.provider,
+      venue: row.venue,
+      category: row.categories[0] ?? 'other',
+      ageRange: row.age_range,
+      ageMinMonths: row.age_min_months,
+      ageMaxMonths: row.age_max_months,
+      daysOfWeek: row.days_of_week,
+      description: row.description,
+      sourceUrl: row.source_url,
+      lastSyncedAt: row.last_synced_at,
+    },
+  };
+}
+
 async function getClasses(): Promise<unknown[]> {
   const now = Date.now();
-  if (classCache && (now - classCache.lastFetchedAt) < SIX_HOURS_MS) {
+
+  // 1. In-memory cache (fast path within the same process)
+  if (classCache && now - classCache.lastFetchedAt < SIX_HOURS_MS) {
     return classCache.classes;
   }
-  try {
-    const classes = await scrapeWriggleClasses();
+
+  // 2. Database — return if a fresh batch exists
+  const dbRows = await queryFreshEvents(SIX_HOURS_MS);
+  if (dbRows && dbRows.length > 0) {
+    console.log(`[classes] Serving ${dbRows.length} events from DB`);
+    const classes = dbRows.map(eventRowToLocation);
     classCache = { classes, lastFetchedAt: now };
     return classes;
+  }
+
+  // 3. Cold cache: scrape, persist, return
+  console.log('[classes] Cache cold — scraping...');
+  try {
+    const scraped = await scrapeWriggleClasses();
+    await upsertEvents(scraped.map(locationToEventRow));
+    classCache = { classes: scraped, lastFetchedAt: now };
+    return scraped;
   } catch (err) {
-    console.error("[classes] Scrape failed:", err);
+    console.error('[classes] Scrape failed:', err);
     return classCache?.classes ?? [];
   }
 }
@@ -94,7 +164,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   app.post("/api/classes/sync", async (_req, res) => {
     try {
-      classCache = null; // Force re-scrape
+      classCache = null; // Force re-scrape + re-persist
       const classes = await getClasses();
       res.json({ classes, count: classes.length, syncedAt: classCache?.lastFetchedAt });
     } catch (err) {
