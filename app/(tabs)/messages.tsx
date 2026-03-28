@@ -28,37 +28,35 @@ export default function MessagesScreen() {
   const { matches, getMomById } = useApp();
 
   const webTopInset = Platform.OS === 'web' ? 67 : 0;
-
   const activeMatches = matches.filter(m => m.matched);
-  const newMatches = activeMatches.filter(m => !m.lastMessage);
-  const conversations = activeMatches.filter(m => !!m.lastMessage);
 
   const handleOpenChat = (match: Match) => {
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
     router.push({ pathname: '/chat', params: { matchId: match.id, momId: match.momId } });
   };
 
-  const renderConversation = ({ item }: { item: Match }) => {
+  const renderItem = ({ item }: { item: Match }) => {
     const mom = getMomById(item.momId);
     if (!mom) return null;
+    const hasMessage = !!item.lastMessage;
 
     return (
       <Pressable
         onPress={() => handleOpenChat(item)}
-        style={({ pressed }) => [styles.conversationItem, pressed && { opacity: 0.7 }]}
+        style={({ pressed }) => [styles.row, pressed && { opacity: 0.7 }]}
       >
         <Avatar name={mom.name} size={52} verified={mom.verified} hangNow={mom.hangNow} />
-        <View style={styles.conversationInfo}>
-          <View style={styles.conversationHeader}>
-            <Text style={styles.conversationName}>{mom.name}</Text>
-            <Text style={styles.conversationTime}>{timeAgo(item.timestamp)}</Text>
+        <View style={styles.rowInfo}>
+          <View style={styles.rowHeader}>
+            <Text style={styles.name}>{mom.name}</Text>
+            <Text style={styles.time}>{timeAgo(item.timestamp)}</Text>
           </View>
-          <View style={styles.conversationPreview}>
+          <View style={styles.rowPreview}>
             <Text
-              style={[styles.conversationMessage, item.unread && item.unread > 0 && styles.unreadMessage]}
+              style={[styles.preview, !hasMessage && styles.previewPlaceholder, item.unread && item.unread > 0 && styles.previewUnread]}
               numberOfLines={1}
             >
-              {item.lastMessage}
+              {item.lastMessage ?? 'Say something...'}
             </Text>
             {item.unread && item.unread > 0 ? (
               <View style={styles.unreadBadge}>
@@ -74,51 +72,21 @@ export default function MessagesScreen() {
   return (
     <View style={[styles.container, { paddingTop: insets.top + webTopInset }]}>
       <View style={styles.topBar}>
-        <Text style={styles.title}>Messages</Text>
-      </View>
-
-      {newMatches.length > 0 && (
-        <View style={styles.newMatchesSection}>
-          <Text style={styles.sectionLabel}>New Matches</Text>
-          <FlatList
-            horizontal
-            data={newMatches}
-            keyExtractor={item => item.id}
-            showsHorizontalScrollIndicator={false}
-            contentContainerStyle={styles.newMatchesList}
-            renderItem={({ item }) => {
-              const mom = getMomById(item.momId);
-              if (!mom) return null;
-              return (
-                <Pressable
-                  onPress={() => handleOpenChat(item)}
-                  style={({ pressed }) => [styles.newMatchItem, pressed && { opacity: 0.7 }]}
-                >
-                  <Avatar name={mom.name} size={62} verified={mom.verified} />
-                  <Text style={styles.newMatchName} numberOfLines={1}>{mom.name.split(' ')[0]}</Text>
-                </Pressable>
-              );
-            }}
-          />
-        </View>
-      )}
-
-      <View style={styles.sectionLabelContainer}>
-        <Text style={styles.sectionLabel}>Conversations</Text>
+        <Text style={styles.title}>Chats</Text>
       </View>
 
       <FlatList
-        data={conversations}
-        renderItem={renderConversation}
+        data={activeMatches}
+        renderItem={renderItem}
         keyExtractor={item => item.id}
-        contentContainerStyle={styles.listContent}
+        contentContainerStyle={[styles.listContent, activeMatches.length === 0 && styles.listEmpty]}
         showsVerticalScrollIndicator={false}
-        contentInsetAdjustmentBehavior="automatic"
+        ItemSeparatorComponent={() => <View style={styles.separator} />}
         ListEmptyComponent={
           <View style={styles.emptyState}>
-            <Ionicons name="chatbubble-ellipses-outline" size={48} color={Colors.primaryLight} />
-            <Text style={styles.emptyTitle}>No conversations yet</Text>
-            <Text style={styles.emptyText}>Start by discovering and matching with moms nearby</Text>
+            <Text style={styles.emptyEmoji}>💬</Text>
+            <Text style={styles.emptyTitle}>Say something...</Text>
+            <Text style={styles.emptyText}>Match with moms nearby and start a conversation</Text>
           </View>
         }
       />
@@ -140,81 +108,63 @@ const styles = StyleSheet.create({
     fontFamily: 'Nunito_700Bold',
     color: Colors.text,
   },
-  newMatchesSection: {
-    marginBottom: 8,
-  },
-  newMatchesList: {
-    paddingHorizontal: 16,
-    gap: 16,
-  },
-  newMatchItem: {
-    alignItems: 'center',
-    gap: 6,
-    width: 70,
-  },
-  newMatchName: {
-    fontSize: 12,
-    fontFamily: 'Nunito_600SemiBold',
-    color: Colors.text,
-    textAlign: 'center',
-  },
-  sectionLabelContainer: {
-    paddingHorizontal: 20,
-    marginTop: 8,
-  },
-  sectionLabel: {
-    fontSize: 14,
-    fontFamily: 'Nunito_600SemiBold',
-    color: Colors.textTertiary,
-    textTransform: 'uppercase',
-    letterSpacing: 0.5,
-    marginBottom: 12,
-    paddingHorizontal: 20,
-  },
   listContent: {
     paddingBottom: 100,
   },
-  conversationItem: {
+  listEmpty: {
+    flex: 1,
+  },
+  row: {
     flexDirection: 'row',
     alignItems: 'center',
     paddingHorizontal: 20,
     paddingVertical: 12,
+    backgroundColor: Colors.background,
   },
-  conversationInfo: {
+  rowInfo: {
     flex: 1,
     marginLeft: 14,
   },
-  conversationHeader: {
+  rowHeader: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
   },
-  conversationName: {
+  name: {
     fontSize: 16,
     fontFamily: 'Nunito_600SemiBold',
     color: Colors.text,
   },
-  conversationTime: {
+  time: {
     fontSize: 12,
     fontFamily: 'Nunito_400Regular',
     color: Colors.textTertiary,
   },
-  conversationPreview: {
+  rowPreview: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    marginTop: 4,
+    marginTop: 3,
   },
-  conversationMessage: {
+  preview: {
     fontSize: 14,
     fontFamily: 'Nunito_400Regular',
     color: Colors.textSecondary,
     flex: 1,
     marginRight: 8,
   },
-  unreadMessage: {
+  previewPlaceholder: {
+    color: Colors.textTertiary,
+    fontStyle: 'italic',
+  },
+  previewUnread: {
     fontFamily: 'Nunito_600SemiBold',
     color: Colors.text,
+  },
+  separator: {
+    height: 1,
+    backgroundColor: Colors.borderLight,
+    marginLeft: 86,
   },
   unreadBadge: {
     width: 20,
@@ -230,12 +180,17 @@ const styles = StyleSheet.create({
     color: Colors.white,
   },
   emptyState: {
+    flex: 1,
     alignItems: 'center',
-    gap: 8,
-    paddingTop: 80,
+    justifyContent: 'center',
+    gap: 10,
+    paddingBottom: 80,
+  },
+  emptyEmoji: {
+    fontSize: 52,
   },
   emptyTitle: {
-    fontSize: 18,
+    fontSize: 22,
     fontFamily: 'Nunito_700Bold',
     color: Colors.text,
   },
