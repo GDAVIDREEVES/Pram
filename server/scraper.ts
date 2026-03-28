@@ -215,7 +215,7 @@ export async function scrapeWriggleClasses(): Promise<LocationLike[]> {
       address: coords.address,
       latitude: coords.latitude,
       longitude: coords.longitude,
-      rating: 4.7 + Math.random() * 0.3, // Slight variation around 4.7-5.0
+      rating: Math.round((4.7 + Math.random() * 0.3) * 10) / 10,
       checkins: Math.floor(Math.random() * 30) + 5,
       kidFriendly: true,
       amenities: [
