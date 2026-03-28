@@ -341,6 +341,12 @@ export default function ExploreScreen() {
       )}
 
       <View style={[styles.toggleContainer, { bottom: (Platform.OS === 'web' ? 84 + 16 : 90 + insets.bottom) }]}>
+        {viewMode === 'map' && filteredLocations.length > 0 && (
+          <View style={styles.countPill}>
+            <Ionicons name="location" size={11} color={Colors.primary} />
+            <Text style={styles.countPillText}>{filteredLocations.length} showing</Text>
+          </View>
+        )}
         <Pressable
           onPress={handleToggleView}
           style={({ pressed }) => [styles.toggleButton, pressed && { transform: [{ scale: 0.95 }] }]}
@@ -485,7 +491,28 @@ const styles = StyleSheet.create({
   toggleContainer: {
     position: 'absolute',
     alignSelf: 'center',
+    alignItems: 'center',
+    gap: 6,
     zIndex: 20,
+  },
+  countPill: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
+    backgroundColor: Colors.white,
+    paddingHorizontal: 10,
+    paddingVertical: 4,
+    borderRadius: 12,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.08,
+    shadowRadius: 4,
+    elevation: 2,
+  },
+  countPillText: {
+    fontSize: 12,
+    fontFamily: 'Nunito_600SemiBold',
+    color: Colors.textSecondary,
   },
   toggleButton: {
     flexDirection: 'row',

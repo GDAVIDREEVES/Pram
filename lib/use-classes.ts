@@ -5,7 +5,7 @@ import { getApiUrl } from './query-client';
 
 async function fetchClasses(): Promise<Location[]> {
   try {
-    const baseUrl = getApiUrl();
+    const baseUrl = process.env.EXPO_PUBLIC_API_URL || getApiUrl();
     const res = await fetch(`${baseUrl}/api/classes`);
     if (!res.ok) throw new Error(`${res.status}`);
     const data = await res.json();
