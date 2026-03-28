@@ -26,6 +26,16 @@ View and edit your profile — neighborhood, bio, kids, interests. Track stats (
 ### Feed
 Community post feed with check-ins, meetup announcements, and general posts. Like and comment on posts. Filterable by post type.
 
+### Admin Dashboard
+Standalone web admin panel at `/admin` for managing the app. Includes:
+- **Dashboard** — stats overview (total users, posts, messages, matches, active users), neighborhood distribution chart, and top interests
+- **Users** — searchable user table with detail view, admin role toggling, and user deletion
+- **Content Moderation** — posts table filterable by type (post/check-in/meetup) with delete actions
+- **Messages** — all conversations grouped by match, with sender, content, and timestamps
+- **Activity** — matches and broadcast logs
+
+Protected by cookie-based auth gated on an `isAdmin` flag on the user model. Served as a self-contained HTML SPA by the Express backend, independent of the Expo app.
+
 ---
 
 ## Tech Stack
@@ -40,7 +50,7 @@ Community post feed with check-ins, meetup announcements, and general posts. Lik
 | State | React Context + [AsyncStorage](https://react-native-async-storage.github.io/async-storage/) persistence |
 | Server State | [TanStack React Query](https://tanstack.com/query) v5 |
 | Animations | [React Native Reanimated](https://docs.swmansion.com/react-native-reanimated/) + Gesture Handler |
-| Backend | Express 5 (class scraping, GIF proxy) |
+| Backend | Express 5 (class scraping, GIF proxy, admin API) |
 | Fonts | Nunito (UI) + Pacifico (logo branding) |
 | Deployment | Vercel (web) / EAS Build (native) |
 
@@ -95,9 +105,14 @@ Pram/
 ├── server/                     # Express backend
 │   ├── index.ts                # Server entry point
 │   ├── routes.ts               # API routes (GIFs, classes)
+│   ├── admin-routes.ts         # Admin API routes + auth middleware
+│   ├── admin-store.ts          # In-memory admin data store
 │   ├── scraper.ts              # Baby class web scraper
 │   ├── storage.ts              # Data persistence
-│   └── venue-coords.ts         # Brooklyn venue coordinates
+│   ├── venue-coords.ts         # Brooklyn venue coordinates
+│   └── templates/
+│       ├── landing-page.html   # App landing page
+│       └── admin.html          # Admin dashboard SPA
 ├── shared/
 │   └── schema.ts               # Drizzle ORM database schema
 └── scripts/
@@ -184,6 +199,10 @@ npm run server:dev
 EXPO_PUBLIC_DOMAIN=localhost:5000 npx expo start --web --localhost
 ```
 
+**Admin Dashboard:**
+
+With the backend server running, open [http://localhost:5000/admin](http://localhost:5000/admin) in your browser. Sign in as Sarah Chen (`user_current`) — the default admin user.
+
 **iOS / Android:**
 
 ```bash
@@ -253,11 +272,32 @@ App Launch
 
 ## API Routes
 
+### Public
+
 | Endpoint | Method | Description |
 |----------|--------|-------------|
 | `/api/classes` | GET | Fetch baby classes (scraped, 6-hour cache) |
+| `/api/classes/sync` | POST | Force re-scrape of baby classes |
 | `/api/gifs/search?q=` | GET | Search GIFs via GIPHY |
 | `/api/gifs/trending` | GET | Get trending GIFs |
+
+### Admin (requires auth cookie)
+
+| Endpoint | Method | Description |
+|----------|--------|-------------|
+| `/api/admin/login` | POST | Authenticate as admin (`{ userId }`) |
+| `/api/admin/logout` | POST | Clear admin session |
+| `/api/admin/me` | GET | Current admin user info |
+| `/api/admin/stats` | GET | Dashboard statistics |
+| `/api/admin/users` | GET | List users (supports `?search=`) |
+| `/api/admin/users/:id` | GET | Single user detail |
+| `/api/admin/users/:id` | PATCH | Update user fields |
+| `/api/admin/users/:id` | DELETE | Remove a user |
+| `/api/admin/posts` | GET | List posts (supports `?type=` filter) |
+| `/api/admin/posts/:id` | DELETE | Remove a post |
+| `/api/admin/messages` | GET | List messages (supports `?matchId=`) |
+| `/api/admin/matches` | GET | List all matches |
+| `/api/admin/broadcasts` | GET | List all broadcasts |
 
 ---
 
