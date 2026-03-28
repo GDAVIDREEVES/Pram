@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useState, useEffect } from 'react';
 import {
   View, Text, StyleSheet, FlatList, Pressable, Platform,
 } from 'react-native';
@@ -8,7 +8,10 @@ import { router } from 'expo-router';
 import Colors from '@/constants/colors';
 import { useApp } from '@/contexts/AppContext';
 import { useFriends, Friend } from '@/lib/use-profile';
+import { isSupabaseConfigured } from '@/lib/supabase';
+import { fetchLastMessages } from '@/lib/use-messages';
 import Avatar from '@/components/Avatar';
+import type { Message } from '@/lib/types';
 
 function timeAgo(dateStr: string): string {
   const now = Date.now();
@@ -26,8 +29,16 @@ export default function MessagesScreen() {
   const insets = useSafeAreaInsets();
   const { messages } = useApp();
   const { friends, isLoading } = useFriends();
+  const [lastMessages, setLastMessages] = useState<Record<string, Message>>({});
 
   const webTopInset = Platform.OS === 'web' ? 67 : 0;
+
+  // Fetch last message for each friendship from Supabase
+  useEffect(() => {
+    if (!isSupabaseConfigured || !friends?.length) return;
+    const ids = friends.map(f => f.friendshipId);
+    fetchLastMessages(ids).then(setLastMessages);
+  }, [friends]);
 
   const handleOpenChat = (friend: Friend) => {
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
@@ -35,8 +46,10 @@ export default function MessagesScreen() {
   };
 
   const renderItem = ({ item }: { item: Friend }) => {
-    const thread = messages[item.friendshipId] ?? [];
-    const lastMsg = thread[thread.length - 1];
+    // Use Supabase last message when available, else fall back to local AppContext thread
+    const lastMsg: Message | undefined = isSupabaseConfigured
+      ? lastMessages[item.friendshipId]
+      : (messages[item.friendshipId] ?? [])[messages[item.friendshipId]?.length - 1];
 
     return (
       <Pressable
@@ -133,12 +146,6 @@ const styles = StyleSheet.create({
     fontFamily: 'Nunito_400Regular',
     color: Colors.textTertiary,
   },
-  rowPreview: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    marginTop: 3,
-  },
   preview: {
     fontSize: 14,
     fontFamily: 'Nunito_400Regular',
@@ -150,27 +157,10 @@ const styles = StyleSheet.create({
     color: Colors.textTertiary,
     fontStyle: 'italic',
   },
-  previewUnread: {
-    fontFamily: 'Nunito_600SemiBold',
-    color: Colors.text,
-  },
   separator: {
     height: 1,
     backgroundColor: Colors.borderLight,
     marginLeft: 86,
-  },
-  unreadBadge: {
-    width: 20,
-    height: 20,
-    borderRadius: 10,
-    backgroundColor: Colors.primary,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  unreadCount: {
-    fontSize: 11,
-    fontFamily: 'Nunito_700Bold',
-    color: Colors.white,
   },
   emptyState: {
     flex: 1,

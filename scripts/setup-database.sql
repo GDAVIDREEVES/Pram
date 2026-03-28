@@ -158,3 +158,49 @@ create policy "Users can delete their own friendships"
   on public.friends for delete
   to authenticated
   using (user_id = auth.uid() or friend_id = auth.uid());
+
+-- ============================================================
+-- 7. MESSAGES TABLE
+-- ============================================================
+
+create table if not exists public.messages (
+  id uuid primary key default gen_random_uuid(),
+  friendship_id uuid not null references public.friends(id) on delete cascade,
+  sender_id uuid not null references auth.users(id) on delete cascade,
+  content text not null default '',
+  -- optional rich content stored as jsonb
+  meetup jsonb,
+  gif_url text,
+  sticker_id text,
+  created_at timestamptz not null default now()
+);
+
+create index if not exists idx_messages_friendship_id
+  on public.messages (friendship_id, created_at desc);
+
+alter table public.messages enable row level security;
+
+-- Users can read messages in friendships they belong to
+create policy "Users can view messages in their friendships"
+  on public.messages for select
+  to authenticated
+  using (
+    exists (
+      select 1 from public.friends f
+      where f.id = friendship_id
+        and (f.user_id = auth.uid() or f.friend_id = auth.uid())
+    )
+  );
+
+-- Users can insert messages only as themselves in their friendships
+create policy "Users can send messages in their friendships"
+  on public.messages for insert
+  to authenticated
+  with check (
+    sender_id = auth.uid()
+    and exists (
+      select 1 from public.friends f
+      where f.id = friendship_id
+        and (f.user_id = auth.uid() or f.friend_id = auth.uid())
+    )
+  );
