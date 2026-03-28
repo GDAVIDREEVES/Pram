@@ -166,3 +166,77 @@ export function useDiscoverProfiles(excludeIds: string[] = []) {
 
   return { profiles, isLoading, supabaseQueried };
 }
+
+export interface Friend {
+  friendshipId: string;
+  profile: Mom;
+  since: string;
+}
+
+/**
+ * Hook: fetch the current user's friends from the `friends` table,
+ * joining their profiles. Returns null when Supabase is not configured.
+ */
+export function useFriends() {
+  const { user: authUser } = useAuth();
+  const [friends, setFriends] = useState<Friend[] | null>(null);
+  const [isLoading, setIsLoading] = useState(true);
+
+  useEffect(() => {
+    if (!authUser) { setIsLoading(false); return; }
+    const client = getSupabase();
+    if (!client) { setIsLoading(false); return; }
+
+    // Fetch all friendship rows where the current user is either side
+    client
+      .from('friends')
+      .select('id, user_id, friend_id, created_at')
+      .or(`user_id.eq.${authUser.id},friend_id.eq.${authUser.id}`)
+      .order('created_at', { ascending: false })
+      .then(async ({ data: rows, error }) => {
+        if (error) {
+          console.warn('[useFriends] error:', error.message);
+          setIsLoading(false);
+          return;
+        }
+        if (!rows || rows.length === 0) {
+          setFriends([]);
+          setIsLoading(false);
+          return;
+        }
+
+        // Collect the other person's ID for each friendship
+        const friendIds = rows.map((r: any) =>
+          r.user_id === authUser.id ? r.friend_id : r.user_id
+        );
+
+        // Fetch their profiles in one query
+        const { data: profileRows } = await client
+          .from('profiles')
+          .select('*')
+          .in('id', friendIds);
+
+        const profileMap = new Map<string, Profile>(
+          (profileRows ?? []).map((p: any) => [p.id, p as Profile])
+        );
+
+        const result: Friend[] = rows
+          .map((r: any) => {
+            const otherId = r.user_id === authUser.id ? r.friend_id : r.user_id;
+            const profile = profileMap.get(otherId);
+            if (!profile) return null;
+            return {
+              friendshipId: r.id,
+              profile: profileToMom(profile),
+              since: r.created_at,
+            };
+          })
+          .filter(Boolean) as Friend[];
+
+        setFriends(result);
+        setIsLoading(false);
+      });
+  }, [authUser]);
+
+  return { friends, isLoading };
+}

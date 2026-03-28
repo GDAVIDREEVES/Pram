@@ -3,13 +3,12 @@ import {
   View, Text, StyleSheet, FlatList, Pressable, Platform,
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { Ionicons } from '@expo/vector-icons';
 import * as Haptics from 'expo-haptics';
 import { router } from 'expo-router';
 import Colors from '@/constants/colors';
 import { useApp } from '@/contexts/AppContext';
+import { useFriends, Friend } from '@/lib/use-profile';
 import Avatar from '@/components/Avatar';
-import { Match } from '@/lib/types';
 
 function timeAgo(dateStr: string): string {
   const now = Date.now();
@@ -25,45 +24,37 @@ function timeAgo(dateStr: string): string {
 
 export default function MessagesScreen() {
   const insets = useSafeAreaInsets();
-  const { matches, getMomById } = useApp();
+  const { messages } = useApp();
+  const { friends, isLoading } = useFriends();
 
   const webTopInset = Platform.OS === 'web' ? 67 : 0;
-  const activeMatches = matches.filter(m => m.matched);
 
-  const handleOpenChat = (match: Match) => {
+  const handleOpenChat = (friend: Friend) => {
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
-    router.push({ pathname: '/chat', params: { matchId: match.id, momId: match.momId } });
+    router.push({ pathname: '/chat', params: { matchId: friend.friendshipId, momId: friend.profile.id } });
   };
 
-  const renderItem = ({ item }: { item: Match }) => {
-    const mom = getMomById(item.momId);
-    if (!mom) return null;
-    const hasMessage = !!item.lastMessage;
+  const renderItem = ({ item }: { item: Friend }) => {
+    const thread = messages[item.friendshipId] ?? [];
+    const lastMsg = thread[thread.length - 1];
 
     return (
       <Pressable
         onPress={() => handleOpenChat(item)}
         style={({ pressed }) => [styles.row, pressed && { opacity: 0.7 }]}
       >
-        <Avatar name={mom.name} size={52} verified={mom.verified} hangNow={mom.hangNow} />
+        <Avatar name={item.profile.name} size={52} verified={item.profile.verified} hangNow={item.profile.hangNow} />
         <View style={styles.rowInfo}>
           <View style={styles.rowHeader}>
-            <Text style={styles.name}>{mom.name}</Text>
-            <Text style={styles.time}>{timeAgo(item.timestamp)}</Text>
+            <Text style={styles.name}>{item.profile.name}</Text>
+            <Text style={styles.time}>{timeAgo(lastMsg?.timestamp ?? item.since)}</Text>
           </View>
-          <View style={styles.rowPreview}>
-            <Text
-              style={[styles.preview, !hasMessage && styles.previewPlaceholder, item.unread && item.unread > 0 && styles.previewUnread]}
-              numberOfLines={1}
-            >
-              {item.lastMessage ?? 'Say something...'}
-            </Text>
-            {item.unread && item.unread > 0 ? (
-              <View style={styles.unreadBadge}>
-                <Text style={styles.unreadCount}>{item.unread}</Text>
-              </View>
-            ) : null}
-          </View>
+          <Text
+            style={[styles.preview, !lastMsg && styles.previewPlaceholder]}
+            numberOfLines={1}
+          >
+            {lastMsg?.content ?? 'Say something...'}
+          </Text>
         </View>
       </Pressable>
     );
@@ -76,18 +67,20 @@ export default function MessagesScreen() {
       </View>
 
       <FlatList
-        data={activeMatches}
+        data={friends ?? []}
         renderItem={renderItem}
-        keyExtractor={item => item.id}
-        contentContainerStyle={[styles.listContent, activeMatches.length === 0 && styles.listEmpty]}
+        keyExtractor={item => item.friendshipId}
+        contentContainerStyle={[styles.listContent, !friends?.length && styles.listEmpty]}
         showsVerticalScrollIndicator={false}
         ItemSeparatorComponent={() => <View style={styles.separator} />}
         ListEmptyComponent={
-          <View style={styles.emptyState}>
-            <Text style={styles.emptyEmoji}>💬</Text>
-            <Text style={styles.emptyTitle}>Say something...</Text>
-            <Text style={styles.emptyText}>Match with moms nearby and start a conversation</Text>
-          </View>
+          !isLoading ? (
+            <View style={styles.emptyState}>
+              <Text style={styles.emptyEmoji}>💬</Text>
+              <Text style={styles.emptyTitle}>Say something...</Text>
+              <Text style={styles.emptyText}>Match with moms nearby and start a conversation</Text>
+            </View>
+          ) : null
         }
       />
     </View>
