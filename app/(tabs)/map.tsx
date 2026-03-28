@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useRef, useEffect, useCallback } from 'react';
 import {
   View, Text, StyleSheet, ScrollView, Pressable, Platform, TextInput,
 } from 'react-native';
@@ -63,11 +63,7 @@ const pinStyles = StyleSheet.create({
     borderRadius: 10,
     paddingHorizontal: 8,
     paddingVertical: 5,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.15,
-    shadowRadius: 6,
-    elevation: 4,
+    boxShadow: '0px 2px 6px rgba(0, 0, 0, 0.15)',
     maxWidth: 140,
   },
   selected: {
@@ -95,129 +91,82 @@ const pinStyles = StyleSheet.create({
   },
 });
 
+let mapboxgl: typeof import('mapbox-gl') | null = null;
+if (Platform.OS === 'web') {
+  mapboxgl = require('mapbox-gl');
+  require('mapbox-gl/dist/mapbox-gl.css');
+}
+
+const MAPBOX_TOKEN = process.env.EXPO_PUBLIC_MAPBOX_TOKEN || 'pk.eyJ1IjoiZ2RhdmlkcmVldmVzIiwiYSI6ImNtbTJ0ZmQwMDBiNjAyeHB1ZGkwNzcxYXgifQ.blAyDAgJi2iIgLEuPwE6wQ';
+
+function createPinHTML(location: Location, isSelected: boolean): string {
+  const color = TYPE_COLORS[location.type] || '#D4A574';
+  const iconMap: Record<string, string> = {
+    cafe: '\u2615', park: '\ud83c\udf3f', playground: '\ud83d\ude04',
+    restaurant: '\ud83c\udf7d', library: '\ud83d\udcda', class: '\ud83c\udf93',
+  };
+  const icon = iconMap[location.type] || '\ud83d\udccd';
+  const border = isSelected ? `border: 2px solid ${Colors.primary};` : '';
+  return `<div style="display:flex;flex-direction:column;align-items:center;background:#fff;border-radius:10px;padding:5px 8px;box-shadow:0 2px 6px rgba(0,0,0,0.15);max-width:140px;cursor:pointer;${border}">
+    <div style="display:flex;align-items:center;gap:4px;background:${color};padding:2px 6px;border-radius:8px;margin-bottom:2px;">
+      <span style="font-size:10px">${icon}</span>
+      <span style="font-size:11px;font-weight:700;color:#fff;font-family:Nunito,sans-serif">${location.rating}</span>
+    </div>
+    <span style="font-size:11px;font-weight:600;color:#3D3A36;font-family:Nunito,sans-serif;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:120px">${location.name}</span>
+  </div>`;
+}
+
 function WebMapView({ filteredLocations, selectedLocation, onSelectLocation }: {
   filteredLocations: Location[];
   selectedLocation: string | null;
   onSelectLocation: (id: string) => void;
 }) {
-  return (
-    <View style={webMapStyles.container}>
-      <View style={webMapStyles.grid}>
-        {filteredLocations.map((loc) => {
-          const normalizedLat = ((loc.latitude - 40.66) / 0.04);
-          const normalizedLng = ((loc.longitude + 74.0) / 0.04);
-          const top = Math.max(10, Math.min(85, (1 - normalizedLat) * 100));
-          const left = Math.max(5, Math.min(90, normalizedLng * 100));
+  const mapContainerRef = useRef<HTMLDivElement | null>(null);
+  const mapRef = useRef<mapboxgl.Map | null>(null);
+  const markersRef = useRef<mapboxgl.Marker[]>([]);
 
-          return (
-            <View
-              key={loc.id}
-              style={[webMapStyles.pinWrapper, { top: `${top}%` as any, left: `${left}%` as any }]}
-            >
-              <WebMapPin
-                location={loc}
-                onPress={() => onSelectLocation(loc.id)}
-                isSelected={selectedLocation === loc.id}
-              />
-            </View>
-          );
-        })}
-      </View>
-      <View style={webMapStyles.gridLines}>
-        {[0, 1, 2, 3, 4].map(i => (
-          <View key={`h${i}`} style={[webMapStyles.hLine, { top: `${(i + 1) * 20}%` as any }]} />
-        ))}
-        {[0, 1, 2, 3, 4].map(i => (
-          <View key={`v${i}`} style={[webMapStyles.vLine, { left: `${(i + 1) * 20}%` as any }]} />
-        ))}
-      </View>
-      <View style={webMapStyles.centerDot}>
-        <View style={webMapStyles.centerDotPulse} />
-        <View style={webMapStyles.centerDotInner} />
-      </View>
-      <View style={webMapStyles.label}>
-        <Ionicons name="location" size={14} color={Colors.primary} />
-        <Text style={webMapStyles.labelText}>Brooklyn, NY</Text>
-      </View>
+  // Initialize map once
+  useEffect(() => {
+    if (!mapboxgl || !mapContainerRef.current || mapRef.current) return;
+    mapboxgl.accessToken = MAPBOX_TOKEN;
+    const map = new mapboxgl.Map({
+      container: mapContainerRef.current,
+      style: 'mapbox://styles/mapbox/light-v11',
+      center: [-73.9800, 40.6800],
+      zoom: 13.5,
+    });
+    map.addControl(new mapboxgl.NavigationControl(), 'bottom-right');
+    mapRef.current = map;
+    return () => { map.remove(); mapRef.current = null; };
+  }, []);
+
+  // Update markers when filteredLocations or selectedLocation changes
+  useEffect(() => {
+    if (!mapboxgl || !mapRef.current) return;
+    // Remove old markers
+    markersRef.current.forEach(m => m.remove());
+    markersRef.current = [];
+    // Add new markers
+    filteredLocations.forEach(loc => {
+      const el = document.createElement('div');
+      el.innerHTML = createPinHTML(loc, selectedLocation === loc.id);
+      el.addEventListener('click', (e) => {
+        e.stopPropagation();
+        onSelectLocation(loc.id);
+      });
+      const marker = new mapboxgl.Marker({ element: el, anchor: 'bottom' })
+        .setLngLat([loc.longitude, loc.latitude])
+        .addTo(mapRef.current!);
+      markersRef.current.push(marker);
+    });
+  }, [filteredLocations, selectedLocation, onSelectLocation]);
+
+  return (
+    <View style={{ flex: 1 }}>
+      <div ref={mapContainerRef as any} style={{ width: '100%', height: '100%' }} />
     </View>
   );
 }
-
-const webMapStyles = StyleSheet.create({
-  container: {
-    flex: 1,
-    backgroundColor: '#E8E4DF',
-    position: 'relative',
-  },
-  grid: {
-    flex: 1,
-    position: 'relative',
-  },
-  pinWrapper: {
-    position: 'absolute',
-    transform: [{ translateX: -40 }, { translateY: -20 }],
-    zIndex: 10,
-  },
-  gridLines: {
-    ...StyleSheet.absoluteFillObject,
-    zIndex: 0,
-  },
-  hLine: {
-    position: 'absolute',
-    left: 0,
-    right: 0,
-    height: 1,
-    backgroundColor: '#D5D0CB',
-  },
-  vLine: {
-    position: 'absolute',
-    top: 0,
-    bottom: 0,
-    width: 1,
-    backgroundColor: '#D5D0CB',
-  },
-  centerDot: {
-    position: 'absolute',
-    top: '50%',
-    left: '50%',
-    transform: [{ translateX: -8 }, { translateY: -8 }],
-    zIndex: 5,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  centerDotInner: {
-    width: 16,
-    height: 16,
-    borderRadius: 8,
-    backgroundColor: Colors.primary,
-    borderWidth: 3,
-    borderColor: Colors.white,
-  },
-  centerDotPulse: {
-    position: 'absolute',
-    width: 32,
-    height: 32,
-    borderRadius: 16,
-    backgroundColor: Colors.primary + '20',
-  },
-  label: {
-    position: 'absolute',
-    bottom: 100,
-    left: 16,
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 4,
-    backgroundColor: Colors.white + 'CC',
-    paddingHorizontal: 10,
-    paddingVertical: 6,
-    borderRadius: 12,
-  },
-  labelText: {
-    fontSize: 12,
-    fontFamily: 'Nunito_600SemiBold',
-    color: Colors.text,
-  },
-});
 
 export default function ExploreScreen() {
   const insets = useSafeAreaInsets();
@@ -388,6 +337,12 @@ export default function ExploreScreen() {
       )}
 
       <View style={[styles.toggleContainer, { bottom: (Platform.OS === 'web' ? 84 + 16 : 90 + insets.bottom) }]}>
+        {viewMode === 'map' && filteredLocations.length > 0 && (
+          <View style={styles.countPill}>
+            <Ionicons name="location" size={11} color={Colors.primary} />
+            <Text style={styles.countPillText}>{filteredLocations.length} showing</Text>
+          </View>
+        )}
         <Pressable
           onPress={handleToggleView}
           style={({ pressed }) => [styles.toggleButton, pressed && { transform: [{ scale: 0.95 }] }]}
@@ -432,11 +387,7 @@ const styles = StyleSheet.create({
     paddingHorizontal: 16,
     paddingVertical: 12,
     gap: 10,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.1,
-    shadowRadius: 8,
-    elevation: 4,
+    boxShadow: '0px 2px 8px rgba(0, 0, 0, 0.1)',
   },
   searchInput: {
     flex: 1,
@@ -456,11 +407,7 @@ const styles = StyleSheet.create({
     paddingVertical: 8,
     borderRadius: 20,
     backgroundColor: Colors.white,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 1 },
-    shadowOpacity: 0.06,
-    shadowRadius: 4,
-    elevation: 2,
+    boxShadow: '0px 1px 4px rgba(0, 0, 0, 0.06)',
   },
   filterChipActive: {
     backgroundColor: Colors.primary,
@@ -532,7 +479,28 @@ const styles = StyleSheet.create({
   toggleContainer: {
     position: 'absolute',
     alignSelf: 'center',
+    alignItems: 'center',
+    gap: 6,
     zIndex: 20,
+  },
+  countPill: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
+    backgroundColor: Colors.white,
+    paddingHorizontal: 10,
+    paddingVertical: 4,
+    borderRadius: 12,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.08,
+    shadowRadius: 4,
+    elevation: 2,
+  },
+  countPillText: {
+    fontSize: 12,
+    fontFamily: 'Nunito_600SemiBold',
+    color: Colors.textSecondary,
   },
   toggleButton: {
     flexDirection: 'row',
@@ -542,11 +510,7 @@ const styles = StyleSheet.create({
     paddingHorizontal: 22,
     paddingVertical: 12,
     borderRadius: 28,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 3 },
-    shadowOpacity: 0.15,
-    shadowRadius: 10,
-    elevation: 6,
+    boxShadow: '0px 3px 10px rgba(0, 0, 0, 0.15)',
   },
   toggleText: {
     fontSize: 15,

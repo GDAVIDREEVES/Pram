@@ -1,6 +1,8 @@
 import express from "express";
 import type { Request, Response, NextFunction } from "express";
+import cookieParser from "cookie-parser";
 import { registerRoutes } from "./routes";
+import { registerAdminRoutes } from "./admin-routes";
 import * as fs from "fs";
 import * as path from "path";
 
@@ -62,6 +64,7 @@ function setupBodyParsing(app: express.Application) {
   );
 
   app.use(express.urlencoded({ extended: false }));
+  app.use(cookieParser());
 }
 
 function setupRequestLogging(app: express.Application) {
@@ -160,6 +163,21 @@ function serveLandingPage({
   res.status(200).send(html);
 }
 
+function configureAdminPage(app: express.Application) {
+  const adminTemplatePath = path.resolve(
+    process.cwd(),
+    "server",
+    "templates",
+    "admin.html",
+  );
+  const adminHtml = fs.readFileSync(adminTemplatePath, "utf-8");
+
+  app.get("/admin", (_req: Request, res: Response) => {
+    res.setHeader("Content-Type", "text/html; charset=utf-8");
+    res.status(200).send(adminHtml);
+  });
+}
+
 function configureExpoAndLanding(app: express.Application) {
   const templatePath = path.resolve(
     process.cwd(),
@@ -173,7 +191,7 @@ function configureExpoAndLanding(app: express.Application) {
   log("Serving static Expo files with dynamic manifest routing");
 
   app.use((req: Request, res: Response, next: NextFunction) => {
-    if (req.path.startsWith("/api")) {
+    if (req.path.startsWith("/api") || req.path.startsWith("/admin")) {
       return next();
     }
 
@@ -230,6 +248,9 @@ function setupErrorHandler(app: express.Application) {
   setupBodyParsing(app);
   setupRequestLogging(app);
 
+  configureAdminPage(app);
+  registerAdminRoutes(app);
+
   configureExpoAndLanding(app);
 
   const server = await registerRoutes(app);
@@ -237,14 +258,7 @@ function setupErrorHandler(app: express.Application) {
   setupErrorHandler(app);
 
   const port = parseInt(process.env.PORT || "5000", 10);
-  server.listen(
-    {
-      port,
-      host: "0.0.0.0",
-      reusePort: true,
-    },
-    () => {
-      log(`express server serving on port ${port}`);
-    },
-  );
+  server.listen(port, "127.0.0.1", () => {
+    log(`express server serving on port ${port}`);
+  });
 })();

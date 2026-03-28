@@ -7,6 +7,8 @@ import { Ionicons } from '@expo/vector-icons';
 import * as Haptics from 'expo-haptics';
 import Colors from '@/constants/colors';
 import { useApp } from '@/contexts/AppContext';
+import { useAuth } from '@/contexts/AuthContext';
+import { useMyProfile } from '@/lib/use-profile';
 import Avatar from '@/components/Avatar';
 import InterestTag from '@/components/InterestTag';
 import { badges as allBadges } from '@/lib/mock-data';
@@ -14,9 +16,11 @@ import { badges as allBadges } from '@/lib/mock-data';
 export default function ProfileScreen() {
   const insets = useSafeAreaInsets();
   const { user, hangNow, toggleHangNow, checkIns, matches } = useApp();
+  const { signOut } = useAuth();
+  const { profile, updateProfile } = useMyProfile();
   const [activeSection, setActiveSection] = useState<'about' | 'badges' | 'settings'>('about');
 
-  const webTopInset = Platform.OS === 'web' ? 67 : 0;
+  const webTopInset = Platform.OS === 'web' ? 20 : 0;
 
   const earnedBadges = allBadges.filter(b => b.earned);
   const totalMatches = matches.filter(m => m.matched).length;
@@ -29,7 +33,7 @@ export default function ProfileScreen() {
   return (
     <View style={[styles.container, { paddingTop: insets.top + webTopInset }]}>
       <ScrollView
-        showsVerticalScrollIndicator={false}
+        showsVerticalScrollIndicator={Platform.OS === 'web'}
         contentContainerStyle={styles.scrollContent}
         contentInsetAdjustmentBehavior="automatic"
       >
@@ -150,7 +154,21 @@ export default function ProfileScreen() {
           <View style={styles.section}>
             <View style={styles.settingsGroup}>
               <Text style={styles.settingsGroupTitle}>Privacy</Text>
-              <SettingRow icon="eye-off" label="Hide Profile from Discover" />
+              <View style={settingStyles.row}>
+                <View style={settingStyles.left}>
+                  <Ionicons name="eye" size={20} color={Colors.textSecondary} />
+                  <View>
+                    <Text style={settingStyles.label}>Public Profile</Text>
+                    <Text style={settingStyles.sublabel}>Visible in Discover</Text>
+                  </View>
+                </View>
+                <Switch
+                  value={profile?.is_public ?? true}
+                  onValueChange={(val) => updateProfile({ is_public: val })}
+                  trackColor={{ false: Colors.borderLight, true: Colors.accentLight }}
+                  thumbColor={profile?.is_public ? Colors.accent : Colors.white}
+                />
+              </View>
               <SettingRow icon="location" label="Neighborhood Visibility Only" />
               <SettingRow icon="shield-checkmark" label="Verified Badge" active />
             </View>
@@ -168,6 +186,11 @@ export default function ProfileScreen() {
               <SettingRow icon="help-circle" label="Help & Support" />
               <SettingRow icon="flag" label="Report a Problem" />
             </View>
+
+            <Pressable style={styles.signOutButton} onPress={signOut}>
+              <Ionicons name="log-out-outline" size={20} color={Colors.error} />
+              <Text style={styles.signOutText}>Sign Out</Text>
+            </Pressable>
           </View>
         )}
       </ScrollView>
@@ -212,6 +235,12 @@ const settingStyles = StyleSheet.create({
     fontFamily: 'Nunito_500Medium',
     color: Colors.text,
   },
+  sublabel: {
+    fontSize: 12,
+    fontFamily: 'Nunito_400Regular',
+    color: Colors.textTertiary,
+    marginTop: 1,
+  },
 });
 
 const styles = StyleSheet.create({
@@ -248,11 +277,7 @@ const styles = StyleSheet.create({
     borderRadius: 16,
     paddingVertical: 16,
     paddingHorizontal: 12,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 1 },
-    shadowOpacity: 0.04,
-    shadowRadius: 6,
-    elevation: 1,
+    boxShadow: '0px 1px 6px rgba(0, 0, 0, 0.04)',
   },
   statItem: {
     flex: 1,
@@ -286,11 +311,7 @@ const styles = StyleSheet.create({
     borderRadius: 16,
     padding: 16,
     marginTop: 16,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 1 },
-    shadowOpacity: 0.04,
-    shadowRadius: 6,
-    elevation: 1,
+    boxShadow: '0px 1px 6px rgba(0, 0, 0, 0.04)',
   },
   hangNowInfo: {
     flexDirection: 'row',
@@ -416,11 +437,7 @@ const styles = StyleSheet.create({
     borderRadius: 14,
     padding: 14,
     marginBottom: 10,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 1 },
-    shadowOpacity: 0.03,
-    shadowRadius: 4,
-    elevation: 1,
+    boxShadow: '0px 1px 4px rgba(0, 0, 0, 0.03)',
   },
   badgeRowLocked: {
     opacity: 0.5,
@@ -464,5 +481,21 @@ const styles = StyleSheet.create({
     textTransform: 'uppercase',
     letterSpacing: 0.5,
     marginBottom: 8,
+  },
+  signOutButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 8,
+    paddingVertical: 14,
+    borderWidth: 1.5,
+    borderColor: Colors.error,
+    borderRadius: 14,
+    marginTop: 8,
+  },
+  signOutText: {
+    fontSize: 16,
+    fontFamily: 'Nunito_600SemiBold',
+    color: Colors.error,
   },
 });

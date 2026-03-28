@@ -10,6 +10,9 @@ import {
   badges as initialBadges,
   CURRENT_USER_ID,
 } from '@/lib/mock-data';
+import { useAuth } from '@/contexts/AuthContext';
+import { isSupabaseConfigured } from '@/lib/supabase';
+import { addFriend } from '@/lib/use-profile';
 import * as Crypto from 'expo-crypto';
 
 interface AppContextValue {
@@ -54,9 +57,10 @@ const STORAGE_KEYS = {
 };
 
 export function AppProvider({ children }: { children: ReactNode }) {
+  const { user: authUser } = useAuth();
   const [user, setUser] = useState<Mom>(currentUser);
-  const [matches, setMatches] = useState<Match[]>(initialMatches);
-  const [posts, setPosts] = useState<Post[]>(initialPosts);
+  const [matches, setMatches] = useState<Match[]>(isSupabaseConfigured ? [] : initialMatches);
+  const [posts, setPosts] = useState<Post[]>(isSupabaseConfigured ? [] : initialPosts);
   const [messagesMap, setMessagesMap] = useState<Record<string, Message[]>>({});
   const [checkIns, setCheckIns] = useState<CheckIn[]>([]);
   const [broadcasts, setBroadcasts] = useState<MeetBroadcast[]>([]);
@@ -71,6 +75,13 @@ export function AppProvider({ children }: { children: ReactNode }) {
   }, []);
 
   useEffect(() => {
+    if (authUser?.user_metadata?.name) {
+      setUser(prev => ({ ...prev, name: authUser.user_metadata.name as string }));
+    }
+  }, [authUser]);
+
+  useEffect(() => {
+    if (isSupabaseConfigured) return;
     const grouped: Record<string, Message[]> = {};
     initialMessages.forEach(msg => {
       if (!grouped[msg.matchId]) grouped[msg.matchId] = [];
@@ -127,16 +138,22 @@ export function AppProvider({ children }: { children: ReactNode }) {
       return next;
     });
 
-    const isMatch = Math.random() > 0.3;
-    if (isMatch) {
-      const newMatch: Match = {
-        id: `match_${Date.now()}`,
-        momId,
-        matched: true,
-        timestamp: new Date().toISOString(),
-        unread: 0,
-      };
-      setMatches(prev => [...prev, newMatch]);
+    if (isSupabaseConfigured) {
+      // Write to Supabase — friendship appears in Chats via useFriends()
+      addFriend(momId);
+    } else {
+      // Mock mode: randomly create a local match
+      const isMatch = Math.random() > 0.3;
+      if (isMatch) {
+        const newMatch: Match = {
+          id: `match_${Date.now()}`,
+          momId,
+          matched: true,
+          timestamp: new Date().toISOString(),
+          unread: 0,
+        };
+        setMatches(prev => [...prev, newMatch]);
+      }
     }
   }, []);
 

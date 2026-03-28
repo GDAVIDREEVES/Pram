@@ -1,6 +1,7 @@
-import React, { useState, useRef, useCallback } from 'react';
+import React, { useState, useRef, useCallback, useMemo } from 'react';
 import {
-  View, Text, StyleSheet, Dimensions, Pressable, Platform
+  View, Text, StyleSheet, Dimensions, Pressable, Platform, ScrollView,
+  ActivityIndicator, Alert,
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
@@ -12,11 +13,13 @@ import { PanResponder } from 'react-native';
 import * as Haptics from 'expo-haptics';
 import Colors from '@/constants/colors';
 import { useApp } from '@/contexts/AppContext';
+import { useDiscoverProfiles } from '@/lib/use-profile';
 import Avatar from '@/components/Avatar';
 import InterestTag from '@/components/InterestTag';
 import { router } from 'expo-router';
 
-const { width: SCREEN_WIDTH } = Dimensions.get('window');
+const { width: RAW_WIDTH } = Dimensions.get('window');
+const SCREEN_WIDTH = Math.min(RAW_WIDTH, 430);
 const SWIPE_THRESHOLD = SCREEN_WIDTH * 0.3;
 
 function SwipeCard({ mom, onSwipeLeft, onSwipeRight, isFirst }: {
@@ -98,54 +101,56 @@ function SwipeCard({ mom, onSwipeLeft, onSwipeRight, isFirst }: {
       style={[styles.card, cardStyle, !isFirst && styles.cardBehind]}
       {...(isFirst ? panResponder.panHandlers : {})}
     >
-      <View style={styles.cardContent}>
-        <View style={styles.cardHeader}>
-          <Avatar name={mom.name} size={80} verified={mom.verified} hangNow={mom.hangNow} />
-          <View style={styles.cardHeaderInfo}>
-            <Text style={styles.cardName}>{mom.name}, {mom.age}</Text>
-            <View style={styles.locationRow}>
-              <Ionicons name="location" size={14} color={Colors.primary} />
-              <Text style={styles.cardNeighborhood}>{mom.neighborhood}</Text>
-            </View>
-            {mom.hangNow && (
-              <View style={styles.hangNowBadge}>
-                <View style={styles.hangNowDot} />
-                <Text style={styles.hangNowText}>Available now</Text>
+      <ScrollView style={styles.cardScroll} showsVerticalScrollIndicator={false}>
+        <View style={styles.cardContent}>
+          <View style={styles.cardHeader}>
+            <Avatar name={mom.name} size={80} verified={mom.verified} hangNow={mom.hangNow} />
+            <View style={styles.cardHeaderInfo}>
+              <Text style={styles.cardName}>{mom.name}, {mom.age}</Text>
+              <View style={styles.locationRow}>
+                <Ionicons name="location" size={14} color={Colors.primary} />
+                <Text style={styles.cardNeighborhood}>{mom.neighborhood}</Text>
               </View>
-            )}
+              {mom.hangNow && (
+                <View style={styles.hangNowBadge}>
+                  <View style={styles.hangNowDot} />
+                  <Text style={styles.hangNowText}>Available now</Text>
+                </View>
+              )}
+            </View>
           </View>
-        </View>
 
-        <Text style={styles.cardBio} numberOfLines={3}>{mom.bio}</Text>
+          <Text style={styles.cardBio} numberOfLines={3}>{mom.bio}</Text>
 
-        <View style={styles.kidsRow}>
-          <Ionicons name="people" size={14} color={Colors.textSecondary} />
-          <Text style={styles.kidsText}>
-            {mom.kids.map((k: any) => `${k.name}, ${k.age}`).join(' · ')}
-          </Text>
-        </View>
-
-        {mom.prompts.length > 0 && (
-          <View style={styles.promptCard}>
-            <Text style={styles.promptQuestion}>{mom.prompts[0].question}</Text>
-            <Text style={styles.promptAnswer}>{mom.prompts[0].answer}</Text>
+          <View style={styles.kidsRow}>
+            <Ionicons name="people" size={14} color={Colors.textSecondary} />
+            <Text style={styles.kidsText}>
+              {mom.kids.map((k: any) => `${k.name}, ${k.age}`).join(' · ')}
+            </Text>
           </View>
-        )}
 
-        <View style={styles.interests}>
-          {(mom.vibeTags || mom.interests).slice(0, 4).map((tag: string) => (
-            <InterestTag key={tag} label={tag} />
-          ))}
+          {mom.prompts.length > 0 && (
+            <View style={styles.promptCard}>
+              <Text style={styles.promptQuestion}>{mom.prompts[0].question}</Text>
+              <Text style={styles.promptAnswer}>{mom.prompts[0].answer}</Text>
+            </View>
+          )}
+
+          <View style={styles.interests}>
+            {(mom.vibeTags || mom.interests).slice(0, 4).map((tag: string) => (
+              <InterestTag key={tag} label={tag} />
+            ))}
+          </View>
+
+          <Pressable
+            onPress={handleViewProfile}
+            style={styles.viewProfileLink}
+          >
+            <Text style={styles.viewProfileText}>View Full Profile</Text>
+            <Ionicons name="chevron-forward" size={14} color={Colors.primary} />
+          </Pressable>
         </View>
-
-        <Pressable
-          onPress={handleViewProfile}
-          style={styles.viewProfileLink}
-        >
-          <Text style={styles.viewProfileText}>View Full Profile</Text>
-          <Ionicons name="chevron-forward" size={14} color={Colors.primary} />
-        </Pressable>
-      </View>
+      </ScrollView>
 
       <Animated.View style={[styles.likeStamp, likeOpacity]}>
         <Text style={styles.likeStampText}>LIKE</Text>
@@ -159,9 +164,16 @@ function SwipeCard({ mom, onSwipeLeft, onSwipeRight, isFirst }: {
 
 export default function DiscoverScreen() {
   const insets = useSafeAreaInsets();
-  const { discoveryQueue, likeMom, skipMom } = useApp();
+  const { discoveryQueue: mockQueue, likeMom, skipMom } = useApp();
   const [currentIndex, setCurrentIndex] = useState(0);
   const [matchAlert, setMatchAlert] = useState<string | null>(null);
+
+  // Use Supabase profiles if configured; only fall back to mock when Supabase isn't set up
+  const { profiles: supabaseProfiles, isLoading: supabaseLoading, supabaseQueried } = useDiscoverProfiles();
+  const discoveryQueue = useMemo(
+    () => supabaseQueried === false ? mockQueue : supabaseProfiles,
+    [supabaseProfiles, supabaseQueried, mockQueue],
+  );
 
   const webTopInset = Platform.OS === 'web' ? 67 : 0;
 
@@ -196,7 +208,7 @@ export default function DiscoverScreen() {
   const visibleCards = discoveryQueue.slice(currentIndex, currentIndex + 2);
 
   return (
-    <View style={[styles.container, { paddingTop: insets.top + webTopInset }]}>
+    <View style={[styles.container, { paddingTop: insets.top + webTopInset, paddingBottom: Platform.OS === 'web' ? 84 : 0 }]}>
       <View style={styles.topBar}>
         <View>
           <Text style={styles.title}>Discover</Text>
@@ -209,7 +221,10 @@ export default function DiscoverScreen() {
           >
             <Ionicons name="newspaper-outline" size={20} color={Colors.text} />
           </Pressable>
-          <Pressable style={styles.filterButton}>
+          <Pressable
+            onPress={() => Alert.alert('Filters', 'Filter preferences coming soon!')}
+            style={styles.filterButton}
+          >
             <Ionicons name="options" size={22} color={Colors.text} />
           </Pressable>
         </View>
@@ -305,11 +320,7 @@ const styles = StyleSheet.create({
     backgroundColor: Colors.white,
     alignItems: 'center',
     justifyContent: 'center',
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 1 },
-    shadowOpacity: 0.05,
-    shadowRadius: 4,
-    elevation: 2,
+    boxShadow: '0px 1px 4px rgba(0, 0, 0, 0.05)',
   },
   cardStack: {
     flex: 1,
@@ -320,17 +331,17 @@ const styles = StyleSheet.create({
   card: {
     position: 'absolute',
     width: SCREEN_WIDTH - 32,
+    maxHeight: Platform.OS === 'web' ? 'calc(100% - 10px)' : undefined,
     backgroundColor: Colors.white,
     borderRadius: 24,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.1,
-    shadowRadius: 16,
-    elevation: 8,
+    boxShadow: '0px 4px 16px rgba(0, 0, 0, 0.1)',
     overflow: 'hidden',
   },
   cardBehind: {
     top: 10,
+  },
+  cardScroll: {
+    flex: 1,
   },
   cardContent: {
     padding: 20,
@@ -476,7 +487,7 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     justifyContent: 'center',
     gap: 32,
-    paddingBottom: 100,
+    paddingBottom: Platform.OS === 'web' ? 16 : 100,
     paddingTop: 16,
   },
   actionCircle: {
@@ -485,11 +496,7 @@ const styles = StyleSheet.create({
     borderRadius: 30,
     alignItems: 'center',
     justifyContent: 'center',
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.1,
-    shadowRadius: 8,
-    elevation: 4,
+    boxShadow: '0px 2px 8px rgba(0, 0, 0, 0.1)',
   },
   skipCircle: {
     backgroundColor: Colors.white,
@@ -526,11 +533,7 @@ const styles = StyleSheet.create({
     padding: 32,
     alignItems: 'center',
     width: SCREEN_WIDTH - 64,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 8 },
-    shadowOpacity: 0.15,
-    shadowRadius: 24,
-    elevation: 12,
+    boxShadow: '0px 8px 24px rgba(0, 0, 0, 0.15)',
   },
   matchTitle: {
     fontSize: 26,

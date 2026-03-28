@@ -10,6 +10,10 @@ import * as Haptics from 'expo-haptics';
 import { fetch } from 'expo/fetch';
 import Colors from '@/constants/colors';
 import { useApp } from '@/contexts/AppContext';
+import { useAuth } from '@/contexts/AuthContext';
+import { useProfileById } from '@/lib/use-profile';
+import { isSupabaseConfigured } from '@/lib/supabase';
+import { useMessages, sendSupabaseMessage } from '@/lib/use-messages';
 import Avatar from '@/components/Avatar';
 import { Message, MeetupAttachment } from '@/lib/types';
 import { CURRENT_USER_ID, locations } from '@/lib/mock-data';
@@ -204,7 +208,7 @@ function StickerPanel({ onSelectSticker }: { onSelectSticker: (stickerId: string
   );
 }
 
-function GifPanel({ matchId, onSend }: { matchId: string; onSend: () => void }) {
+function GifPanel({ matchId, onSend, onSendGif }: { matchId: string; onSend: () => void; onSendGif?: (gifUrl: string) => void }) {
   const { sendGifMessage } = useApp();
   const [gifs, setGifs] = useState<GifItem[]>([]);
   const [searchQuery, setSearchQuery] = useState('');
@@ -250,7 +254,11 @@ function GifPanel({ matchId, onSend }: { matchId: string; onSend: () => void }) 
 
   const handleSelectGif = (gif: GifItem) => {
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
-    sendGifMessage(matchId, gif.url);
+    if (onSendGif) {
+      onSendGif(gif.url);
+    } else {
+      sendGifMessage(matchId, gif.url);
+    }
     onSend();
   };
 
@@ -314,6 +322,7 @@ export default function ChatScreen() {
   const insets = useSafeAreaInsets();
   const { matchId, momId } = useLocalSearchParams<{ matchId: string; momId: string }>();
   const { messages, sendMessage, sendMeetupMessage, sendStickerMessage, getMomById } = useApp();
+  const { user: authUser } = useAuth();
   const [inputText, setInputText] = useState('');
   const [showMeetupModal, setShowMeetupModal] = useState(false);
   const [meetupStep, setMeetupStep] = useState<'location' | 'details'>('location');
@@ -325,12 +334,21 @@ export default function ChatScreen() {
   const [showPanel, setShowPanel] = useState(false);
   const [panelTab, setPanelTab] = useState<'stickers' | 'gifs'>('stickers');
 
-
   const webTopInset = Platform.OS === 'web' ? 67 : 0;
   const days = getNextDays(14);
 
-  const mom = getMomById(momId || '');
-  const chatMessages = messages[matchId || ''] || [];
+  // Profile resolution: real Supabase users won't be in mock data
+  const mockMom = getMomById(momId || '');
+  const supabaseMom = useProfileById(mockMom ? undefined : momId);
+  const mom = mockMom ?? supabaseMom;
+
+  // Messages: use Supabase real-time when configured, else local AppContext
+  const { messages: supabaseMessages } = useMessages(isSupabaseConfigured ? matchId : undefined);
+  const currentUserId = isSupabaseConfigured ? (authUser?.id ?? CURRENT_USER_ID) : CURRENT_USER_ID;
+
+  const chatMessages = isSupabaseConfigured
+    ? supabaseMessages
+    : (messages[matchId || ''] || []);
   const sortedMessages = [...chatMessages].sort(
     (a, b) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime()
   );
@@ -348,11 +366,16 @@ export default function ChatScreen() {
     setShowPanel(false);
   };
 
-  const handleSend = () => {
+  const handleSend = async () => {
     if (!inputText.trim() || !matchId) return;
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
-    sendMessage(matchId, inputText.trim());
+    const text = inputText.trim();
     setInputText('');
+    if (isSupabaseConfigured && authUser) {
+      await sendSupabaseMessage(matchId, authUser.id, { content: text });
+    } else {
+      sendMessage(matchId, text);
+    }
   };
 
   const handleOpenMeetup = () => {
@@ -372,7 +395,7 @@ export default function ChatScreen() {
     setMeetupStep('details');
   };
 
-  const handleSendMeetup = () => {
+  const handleSendMeetup = async () => {
     if (!selectedLocation || !selectedDate || !selectedTime || !matchId) return;
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
     const meetup: MeetupAttachment = {
@@ -382,14 +405,34 @@ export default function ChatScreen() {
       time: selectedTime,
       note: meetupNote.trim() || undefined,
     };
-    sendMeetupMessage(matchId, meetup);
+    if (isSupabaseConfigured && authUser) {
+      await sendSupabaseMessage(matchId, authUser.id, {
+        content: `Meetup at ${selectedLocation.name}`,
+        meetup,
+      });
+    } else {
+      sendMeetupMessage(matchId, meetup);
+    }
     setShowMeetupModal(false);
   };
 
-  const handleSelectSticker = (stickerId: string) => {
+  const handleSelectSticker = async (stickerId: string) => {
     if (!matchId) return;
-    sendStickerMessage(matchId, stickerId);
+    if (isSupabaseConfigured && authUser) {
+      await sendSupabaseMessage(matchId, authUser.id, { content: 'Sticker', stickerId });
+    } else {
+      sendStickerMessage(matchId, stickerId);
+    }
     setShowPanel(false);
+  };
+
+  const handleSendGif = async (gifUrl: string) => {
+    if (!matchId) return;
+    if (isSupabaseConfigured && authUser) {
+      await sendSupabaseMessage(matchId, authUser.id, { content: 'GIF', gifUrl });
+    } else {
+      // GifPanel handles the sendGifMessage call itself in mock mode
+    }
   };
 
   if (!mom) {
@@ -422,7 +465,7 @@ export default function ChatScreen() {
       <FlatList
         data={sortedMessages}
         renderItem={({ item }) => (
-          <MessageBubble message={item} isOwn={item.senderId === CURRENT_USER_ID} />
+          <MessageBubble message={item} isOwn={item.senderId === currentUserId} />
         )}
         keyExtractor={item => item.id}
         contentContainerStyle={styles.messagesList}
@@ -493,7 +536,7 @@ export default function ChatScreen() {
           {panelTab === 'stickers' ? (
             <StickerPanel onSelectSticker={handleSelectSticker} />
           ) : (
-            <GifPanel matchId={matchId || ''} onSend={closePanel} />
+            <GifPanel matchId={matchId || ''} onSend={closePanel} onSendGif={isSupabaseConfigured ? handleSendGif : undefined} />
           )}
         </View>
       )}
