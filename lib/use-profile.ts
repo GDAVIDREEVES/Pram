@@ -240,3 +240,36 @@ export function useFriends() {
 
   return { friends, isLoading };
 }
+
+/**
+ * Insert a row into the `friends` table when the current user likes someone.
+ * Returns the new friendship id, or null on error.
+ */
+export async function addFriend(friendId: string): Promise<string | null> {
+  const client = getSupabase();
+  if (!client) return null;
+
+  const { data: { user } } = await client.auth.getUser();
+  if (!user) return null;
+
+  // Avoid duplicate friendships
+  const { data: existing } = await client
+    .from('friends')
+    .select('id')
+    .or(`and(user_id.eq.${user.id},friend_id.eq.${friendId}),and(user_id.eq.${friendId},friend_id.eq.${user.id})`)
+    .maybeSingle();
+
+  if (existing) return existing.id;
+
+  const { data, error } = await client
+    .from('friends')
+    .insert({ user_id: user.id, friend_id: friendId })
+    .select('id')
+    .single();
+
+  if (error) {
+    console.error('[addFriend] error:', error.message);
+    return null;
+  }
+  return data?.id ?? null;
+}

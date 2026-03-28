@@ -12,6 +12,7 @@ import {
 } from '@/lib/mock-data';
 import { useAuth } from '@/contexts/AuthContext';
 import { isSupabaseConfigured } from '@/lib/supabase';
+import { addFriend } from '@/lib/use-profile';
 import * as Crypto from 'expo-crypto';
 
 interface AppContextValue {
@@ -137,16 +138,22 @@ export function AppProvider({ children }: { children: ReactNode }) {
       return next;
     });
 
-    const isMatch = Math.random() > 0.3;
-    if (isMatch) {
-      const newMatch: Match = {
-        id: `match_${Date.now()}`,
-        momId,
-        matched: true,
-        timestamp: new Date().toISOString(),
-        unread: 0,
-      };
-      setMatches(prev => [...prev, newMatch]);
+    if (isSupabaseConfigured) {
+      // Write to Supabase — friendship appears in Chats via useFriends()
+      addFriend(momId);
+    } else {
+      // Mock mode: randomly create a local match
+      const isMatch = Math.random() > 0.3;
+      if (isMatch) {
+        const newMatch: Match = {
+          id: `match_${Date.now()}`,
+          momId,
+          matched: true,
+          timestamp: new Date().toISOString(),
+          unread: 0,
+        };
+        setMatches(prev => [...prev, newMatch]);
+      }
     }
   }, []);
 

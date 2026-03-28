@@ -6,6 +6,7 @@
 --   2. RLS policies for discover + profile management
 --   3. Trigger to auto-create a profile on signup
 --   4. Backfill for any existing auth users
+--   5. friends table with RLS policies
 
 -- ============================================================
 -- 1. PROFILES TABLE
@@ -122,3 +123,38 @@ select
 from auth.users
 where id not in (select id from public.profiles)
 on conflict (id) do nothing;
+
+-- ============================================================
+-- 6. FRIENDS TABLE
+-- ============================================================
+
+create table if not exists public.friends (
+  id uuid primary key default gen_random_uuid(),
+  user_id uuid not null references auth.users(id) on delete cascade,
+  friend_id uuid not null references auth.users(id) on delete cascade,
+  created_at timestamptz not null default now(),
+  unique(user_id, friend_id)
+);
+
+create index if not exists idx_friends_user_id on public.friends(user_id);
+create index if not exists idx_friends_friend_id on public.friends(friend_id);
+
+alter table public.friends enable row level security;
+
+-- Users can see friendships they are part of
+create policy "Users can view their own friendships"
+  on public.friends for select
+  to authenticated
+  using (user_id = auth.uid() or friend_id = auth.uid());
+
+-- Users can create friendships where they are the initiator
+create policy "Users can create friendships"
+  on public.friends for insert
+  to authenticated
+  with check (user_id = auth.uid());
+
+-- Users can delete their own friendships
+create policy "Users can delete their own friendships"
+  on public.friends for delete
+  to authenticated
+  using (user_id = auth.uid() or friend_id = auth.uid());
