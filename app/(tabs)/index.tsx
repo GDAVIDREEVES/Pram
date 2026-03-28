@@ -168,11 +168,11 @@ export default function DiscoverScreen() {
   const [currentIndex, setCurrentIndex] = useState(0);
   const [matchAlert, setMatchAlert] = useState<string | null>(null);
 
-  // Try Supabase first, fall back to mock data
-  const { profiles: supabaseProfiles, isLoading: supabaseLoading } = useDiscoverProfiles();
+  // Use Supabase profiles if configured; only fall back to mock when Supabase isn't set up
+  const { profiles: supabaseProfiles, isLoading: supabaseLoading, supabaseQueried } = useDiscoverProfiles();
   const discoveryQueue = useMemo(
-    () => supabaseProfiles.length > 0 ? supabaseProfiles : mockQueue,
-    [supabaseProfiles, mockQueue],
+    () => supabaseQueried === false ? mockQueue : supabaseProfiles,
+    [supabaseProfiles, supabaseQueried, mockQueue],
   );
 
   const webTopInset = Platform.OS === 'web' ? 67 : 0;

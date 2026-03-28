@@ -135,11 +135,13 @@ export function useDiscoverProfiles(excludeIds: string[] = []) {
   const { user: authUser } = useAuth();
   const [profiles, setProfiles] = useState<Mom[]>([]);
   const [isLoading, setIsLoading] = useState(true);
+  // null = not yet queried, false = Supabase not configured (use mock), true = query ran
+  const [supabaseQueried, setSupabaseQueried] = useState<boolean | null>(null);
 
   useEffect(() => {
-    if (!authUser) { setIsLoading(false); return; }
+    if (!authUser) { setIsLoading(false); setSupabaseQueried(false); return; }
     const client = getSupabase();
-    if (!client) { setIsLoading(false); return; }
+    if (!client) { setIsLoading(false); setSupabaseQueried(false); return; }
 
     const allExcluded = [authUser.id, ...excludeIds];
 
@@ -157,9 +159,10 @@ export function useDiscoverProfiles(excludeIds: string[] = []) {
         if (data) {
           setProfiles((data as Profile[]).map(profileToMom));
         }
+        setSupabaseQueried(true);
         setIsLoading(false);
       });
   }, [authUser, excludeIds.join(',')]);
 
-  return { profiles, isLoading };
+  return { profiles, isLoading, supabaseQueried };
 }
