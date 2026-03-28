@@ -1,8 +1,9 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import {
   View, Text, StyleSheet, FlatList, Pressable, Platform,
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { useFocusEffect } from 'expo-router';
 import * as Haptics from 'expo-haptics';
 import { router } from 'expo-router';
 import Colors from '@/constants/colors';
@@ -28,10 +29,13 @@ function timeAgo(dateStr: string): string {
 export default function MessagesScreen() {
   const insets = useSafeAreaInsets();
   const { messages } = useApp();
-  const { friends, isLoading } = useFriends();
+  const { friends, isLoading, refetch } = useFriends();
   const [lastMessages, setLastMessages] = useState<Record<string, Message>>({});
 
   const webTopInset = Platform.OS === 'web' ? 67 : 0;
+
+  // Re-fetch friends every time the tab comes into focus
+  useFocusEffect(useCallback(() => { refetch(); }, [refetch]));
 
   // Fetch last message for each friendship from Supabase
   useEffect(() => {

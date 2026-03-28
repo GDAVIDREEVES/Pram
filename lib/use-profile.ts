@@ -182,12 +182,16 @@ export function useFriends() {
   const { user: authUser } = useAuth();
   const [friends, setFriends] = useState<Friend[] | null>(null);
   const [isLoading, setIsLoading] = useState(true);
+  const [fetchTick, setFetchTick] = useState(0);
+
+  const refetch = useCallback(() => setFetchTick(t => t + 1), []);
 
   useEffect(() => {
     if (!authUser) { setIsLoading(false); return; }
     const client = getSupabase();
     if (!client) { setIsLoading(false); return; }
 
+    setIsLoading(true);
     // Fetch all friendship rows where the current user is either side
     client
       .from('friends')
@@ -250,9 +254,9 @@ export function useFriends() {
         setFriends(result);
         setIsLoading(false);
       });
-  }, [authUser]);
+  }, [authUser, fetchTick]);
 
-  return { friends, isLoading };
+  return { friends, isLoading, refetch };
 }
 
 /**
