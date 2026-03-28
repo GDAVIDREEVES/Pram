@@ -150,7 +150,7 @@ export function useDiscoverProfiles(excludeIds: string[] = []) {
       .select('*')
       .eq('is_public', true)
       .not('id', 'in', `(${allExcluded.join(',')})`)
-      .order('last_active', { ascending: false })
+      .order('updated_at', { ascending: false })
       .limit(50)
       .then(({ data, error }) => {
         if (error) {
