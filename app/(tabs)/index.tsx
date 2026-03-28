@@ -13,7 +13,7 @@ import { PanResponder } from 'react-native';
 import * as Haptics from 'expo-haptics';
 import Colors from '@/constants/colors';
 import { useApp } from '@/contexts/AppContext';
-import { useDiscoverProfiles } from '@/lib/use-profile';
+import { useDiscoverProfiles, useFriends } from '@/lib/use-profile';
 import Avatar from '@/components/Avatar';
 import InterestTag from '@/components/InterestTag';
 import { router } from 'expo-router';
@@ -168,8 +168,15 @@ export default function DiscoverScreen() {
   const [currentIndex, setCurrentIndex] = useState(0);
   const [matchAlert, setMatchAlert] = useState<string | null>(null);
 
+  // Exclude already-friended / pending users from the discover queue
+  const { friends } = useFriends();
+  const excludeIds = useMemo(
+    () => (friends ?? []).map(f => f.profile.id),
+    [friends],
+  );
+
   // Use Supabase profiles if configured; only fall back to mock when Supabase isn't set up
-  const { profiles: supabaseProfiles, isLoading: supabaseLoading, supabaseQueried } = useDiscoverProfiles();
+  const { profiles: supabaseProfiles, isLoading: supabaseLoading, supabaseQueried } = useDiscoverProfiles(excludeIds);
   const discoveryQueue = useMemo(
     () => supabaseQueried === false ? mockQueue : supabaseProfiles,
     [supabaseProfiles, supabaseQueried, mockQueue],
