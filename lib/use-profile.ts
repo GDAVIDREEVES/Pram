@@ -191,70 +191,91 @@ export function useFriends() {
     const client = getSupabase();
     if (!client) { setIsLoading(false); return; }
 
+    const userId = authUser.id;
     setIsLoading(true);
-    // Fetch all friendship rows where the current user is either side
-    client
-      .from('friends')
-      .select('id, user_id, friend_id, created_at')
-      .or(`user_id.eq.${authUser.id},friend_id.eq.${authUser.id}`)
-      .order('created_at', { ascending: false })
-      .then(async ({ data: rows, error }) => {
-        if (error) {
-          console.warn('[useFriends] error:', error.message);
-          setIsLoading(false);
-          return;
-        }
-        if (!rows || rows.length === 0) {
-          setFriends([]);
-          setIsLoading(false);
-          return;
-        }
 
-        // Rows where I initiated (user_id = me) vs they initiated (friend_id = me)
-        const myInitiated = rows.filter((r: any) => r.user_id === authUser.id);
-        const theyInitiated = rows.filter((r: any) => r.friend_id === authUser.id);
+    const loadFriends = async () => {
+      // Fetch all friendship rows where the current user is either side
+      const { data: rows, error } = await client
+        .from('friends')
+        .select('id, user_id, friend_id, created_at')
+        .or(`user_id.eq.${userId},friend_id.eq.${userId}`)
+        .order('created_at', { ascending: false });
 
-        // IDs I have already friended
-        const myFriendedIds = new Set<string>(myInitiated.map((r: any) => r.friend_id));
-
-        // Pending = they friended me, I haven't friended them back
-        const pendingRows = theyInitiated.filter((r: any) => !myFriendedIds.has(r.user_id));
-
-        // Collect all relevant other-person IDs for a single profile fetch
-        const friendIds = [
-          ...myInitiated.map((r: any) => r.friend_id),
-          ...pendingRows.map((r: any) => r.user_id),
-        ];
-
-        // Fetch their profiles in one query
-        const { data: profileRows } = await client
-          .from('profiles')
-          .select('*')
-          .in('id', friendIds);
-
-        const profileMap = new Map<string, Profile>(
-          (profileRows ?? []).map((p: any) => [p.id, p as Profile])
-        );
-
-        const result: Friend[] = [
-          // Connections I initiated (not pending)
-          ...myInitiated.map((r: any) => {
-            const profile = profileMap.get(r.friend_id);
-            if (!profile) return null;
-            return { friendshipId: r.id, profile: profileToMom(profile), since: r.created_at, isPending: false };
-          }),
-          // Incoming requests I haven't accepted yet
-          ...pendingRows.map((r: any) => {
-            const profile = profileMap.get(r.user_id);
-            if (!profile) return null;
-            return { friendshipId: r.id, profile: profileToMom(profile), since: r.created_at, isPending: true };
-          }),
-        ].filter(Boolean) as Friend[];
-
-        setFriends(result);
+      if (error) {
+        console.warn('[useFriends] fetch error:', error.message);
         setIsLoading(false);
-      });
-  }, [authUser, fetchTick]);
+        return;
+      }
+
+      if (!rows || rows.length === 0) {
+        setFriends([]);
+        setIsLoading(false);
+        return;
+      }
+
+      // Rows where I initiated (user_id = me) vs they initiated (friend_id = me)
+      const myInitiated = rows.filter((r: any) => r.user_id === userId);
+      const theyInitiated = rows.filter((r: any) => r.friend_id === userId);
+
+      // IDs I have already friended
+      const myFriendedIds = new Set<string>(myInitiated.map((r: any) => r.friend_id));
+
+      // Pending = they friended me, I haven't friended them back
+      const pendingRows = theyInitiated.filter((r: any) => !myFriendedIds.has(r.user_id));
+
+      // Collect all relevant other-person IDs for a single profile fetch
+      const friendIds = [
+        ...myInitiated.map((r: any) => r.friend_id),
+        ...pendingRows.map((r: any) => r.user_id),
+      ];
+
+      if (friendIds.length === 0) {
+        setFriends([]);
+        setIsLoading(false);
+        return;
+      }
+
+      // Fetch their profiles in one query
+      const { data: profileRows, error: profileError } = await client
+        .from('profiles')
+        .select('*')
+        .in('id', friendIds);
+
+      if (profileError) {
+        console.warn('[useFriends] profile fetch error:', profileError.message);
+        setIsLoading(false);
+        return;
+      }
+
+      const profileMap = new Map<string, Profile>(
+        (profileRows ?? []).map((p: any) => [p.id, p as Profile])
+      );
+
+      const result: Friend[] = [
+        // Connections I initiated (not pending)
+        ...myInitiated.map((r: any) => {
+          const profile = profileMap.get(r.friend_id);
+          if (!profile) return null;
+          return { friendshipId: r.id, profile: profileToMom(profile), since: r.created_at, isPending: false };
+        }),
+        // Incoming requests I haven't accepted yet
+        ...pendingRows.map((r: any) => {
+          const profile = profileMap.get(r.user_id);
+          if (!profile) return null;
+          return { friendshipId: r.id, profile: profileToMom(profile), since: r.created_at, isPending: true };
+        }),
+      ].filter(Boolean) as Friend[];
+
+      setFriends(result);
+      setIsLoading(false);
+    };
+
+    loadFriends().catch(err => {
+      console.error('[useFriends] unexpected error:', err);
+      setIsLoading(false);
+    });
+  }, [authUser?.id, fetchTick]);
 
   return { friends, isLoading, refetch };
 }
