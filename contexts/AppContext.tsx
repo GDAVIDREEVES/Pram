@@ -11,6 +11,7 @@ import {
   CURRENT_USER_ID,
 } from '@/lib/mock-data';
 import { useAuth } from '@/contexts/AuthContext';
+import { isSupabaseConfigured } from '@/lib/supabase';
 import * as Crypto from 'expo-crypto';
 
 interface AppContextValue {
@@ -57,8 +58,8 @@ const STORAGE_KEYS = {
 export function AppProvider({ children }: { children: ReactNode }) {
   const { user: authUser } = useAuth();
   const [user, setUser] = useState<Mom>(currentUser);
-  const [matches, setMatches] = useState<Match[]>(initialMatches);
-  const [posts, setPosts] = useState<Post[]>(initialPosts);
+  const [matches, setMatches] = useState<Match[]>(isSupabaseConfigured ? [] : initialMatches);
+  const [posts, setPosts] = useState<Post[]>(isSupabaseConfigured ? [] : initialPosts);
   const [messagesMap, setMessagesMap] = useState<Record<string, Message[]>>({});
   const [checkIns, setCheckIns] = useState<CheckIn[]>([]);
   const [broadcasts, setBroadcasts] = useState<MeetBroadcast[]>([]);
@@ -79,6 +80,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
   }, [authUser]);
 
   useEffect(() => {
+    if (isSupabaseConfigured) return;
     const grouped: Record<string, Message[]> = {};
     initialMessages.forEach(msg => {
       if (!grouped[msg.matchId]) grouped[msg.matchId] = [];
