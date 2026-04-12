@@ -22,7 +22,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     const client = getSupabase();
     if (!client) {
       setSession({
-        user: { id: 'mock-user', email: 'demo@wriggle.app', user_metadata: { name: 'Sarah' } },
+        user: { id: 'mock-user', email: 'user@example.com', user_metadata: { name: 'Sarah' } },
       } as unknown as Session);
       setIsLoading(false);
       return undefined;

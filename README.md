@@ -133,8 +133,8 @@ Pram/
 ### Installation
 
 ```bash
-git clone https://github.com/GDAVIDREEVES/Pram.git
-cd Pram
+git clone https://github.com/<your-account>/<repository>.git
+cd <repository>
 npm install
 ```
 

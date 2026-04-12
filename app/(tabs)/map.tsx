@@ -97,7 +97,7 @@ if (Platform.OS === 'web') {
   require('mapbox-gl/dist/mapbox-gl.css');
 }
 
-const MAPBOX_TOKEN = process.env.EXPO_PUBLIC_MAPBOX_TOKEN || 'pk.eyJ1IjoiZ2RhdmlkcmVldmVzIiwiYSI6ImNtbTJ0ZmQwMDBiNjAyeHB1ZGkwNzcxYXgifQ.blAyDAgJi2iIgLEuPwE6wQ';
+const MAPBOX_TOKEN = (process.env.EXPO_PUBLIC_MAPBOX_TOKEN ?? '').trim();
 
 function createPinHTML(location: Location, isSelected: boolean): string {
   const color = TYPE_COLORS[location.type] || '#D4A574';
@@ -127,7 +127,7 @@ function WebMapView({ filteredLocations, selectedLocation, onSelectLocation }: {
 
   // Initialize map once
   useEffect(() => {
-    if (!mapboxgl || !mapContainerRef.current || mapRef.current) return;
+    if (!MAPBOX_TOKEN || !mapboxgl || !mapContainerRef.current || mapRef.current) return;
     mapboxgl.accessToken = MAPBOX_TOKEN;
     const map = new mapboxgl.Map({
       container: mapContainerRef.current,
@@ -138,11 +138,11 @@ function WebMapView({ filteredLocations, selectedLocation, onSelectLocation }: {
     map.addControl(new mapboxgl.NavigationControl(), 'bottom-right');
     mapRef.current = map;
     return () => { map.remove(); mapRef.current = null; };
-  }, []);
+  }, [MAPBOX_TOKEN]);
 
   // Update markers when filteredLocations or selectedLocation changes
   useEffect(() => {
-    if (!mapboxgl || !mapRef.current) return;
+    if (!MAPBOX_TOKEN || !mapboxgl || !mapRef.current) return;
     // Remove old markers
     markersRef.current.forEach(m => m.remove());
     markersRef.current = [];
@@ -159,7 +159,19 @@ function WebMapView({ filteredLocations, selectedLocation, onSelectLocation }: {
         .addTo(mapRef.current!);
       markersRef.current.push(marker);
     });
-  }, [filteredLocations, selectedLocation, onSelectLocation]);
+  }, [filteredLocations, selectedLocation, onSelectLocation, MAPBOX_TOKEN]);
+
+  if (!MAPBOX_TOKEN) {
+    return (
+      <View style={styles.mapMissingToken}>
+        <Ionicons name="map-outline" size={48} color={Colors.textTertiary} />
+        <Text style={styles.mapMissingTokenTitle}>Map not configured</Text>
+        <Text style={styles.mapMissingTokenText}>
+          Set EXPO_PUBLIC_MAPBOX_TOKEN in your .env to load Mapbox on web (see README).
+        </Text>
+      </View>
+    );
+  }
 
   return (
     <View style={{ flex: 1 }}>
@@ -370,6 +382,27 @@ const styles = StyleSheet.create({
   mapContainer: {
     flex: 1,
     position: 'relative',
+  },
+  mapMissingToken: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+    paddingHorizontal: 32,
+    backgroundColor: Colors.backgroundSecondary,
+    gap: 8,
+  },
+  mapMissingTokenTitle: {
+    fontSize: 18,
+    fontFamily: 'Nunito_700Bold',
+    color: Colors.text,
+    textAlign: 'center',
+  },
+  mapMissingTokenText: {
+    fontSize: 14,
+    fontFamily: 'Nunito_400Regular',
+    color: Colors.textSecondary,
+    textAlign: 'center',
+    maxWidth: 320,
   },
   searchOverlay: {
     position: 'absolute',
